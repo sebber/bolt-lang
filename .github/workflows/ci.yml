@@ -38,7 +38,7 @@ jobs:
       run: cargo check --all-targets
     
     - name: Run unit tests
-      run: cargo test --lib --bins --tests --quiet
+      run: cargo test --bins --tests --quiet
 
   # Comprehensive test job - runs integration tests
   integration-test:
