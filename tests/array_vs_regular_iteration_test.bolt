@@ -1,0 +1,31 @@
+import { print } from "bolt:stdio"
+
+type Array[T] = {
+    data: ^T,
+    length: Integer,
+    capacity: Integer
+}
+
+print("Comparing regular arrays vs Array[T]:")
+
+val regularArray := [100, 200, 300]
+
+print("Regular array iteration:")
+for item in regularArray {
+    print(item)
+}
+
+val val1: Integer = 400
+val val2: Integer = 500
+val val3: Integer = 600
+
+val genericArray: Array[Integer] = Array[Integer] {
+    data: &val1,
+    length: 3,
+    capacity: 10
+}
+
+print("Generic Array[Integer] iteration:")
+for item in genericArray {
+    print(item)
+}

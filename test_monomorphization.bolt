@@ -1,0 +1,17 @@
+type Array[T] = {
+    data: ^T,
+    length: Integer
+}
+
+type Car = {
+    brand: String,
+    year: Integer
+}
+
+val number: Integer = 42
+val name: String = "test"
+val car: Car = Car { brand: "Tesla", year: 2023 }
+
+val numbers: Array[Integer] = Array[Integer] { data: &number, length: 1 }
+val names: Array[String] = Array[String] { data: &name, length: 1 }
+val cars: Array[Car] = Array[Car] { data: &car, length: 1 }

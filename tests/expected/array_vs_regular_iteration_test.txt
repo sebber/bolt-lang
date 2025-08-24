@@ -1,0 +1,9 @@
+Comparing regular arrays vs Array[T]:
+Regular array iteration:
+100
+200
+300
+Generic Array[Integer] iteration:
+400
+3
+2

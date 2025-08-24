@@ -1,0 +1,36 @@
+import { print } from "bolt:stdio"
+
+type Array[T] = {
+    data: ^T,
+    length: Integer,
+    capacity: Integer
+}
+
+print("Testing edge cases:")
+
+val dummy: Integer = 0
+val emptyArray: Array[Integer] = Array[Integer] {
+    data: &dummy,
+    length: 0,
+    capacity: 5
+}
+
+print("Empty array iteration:")
+for item in emptyArray {
+    print("Should not print")
+}
+print("Empty array iteration complete")
+
+val singleValue: Integer = 42
+val singleArray: Array[Integer] = Array[Integer] {
+    data: &singleValue,
+    length: 1,
+    capacity: 1
+}
+
+print("Single item array iteration:")
+for item in singleArray {
+    print(item)
+}
+
+print("All tests complete")

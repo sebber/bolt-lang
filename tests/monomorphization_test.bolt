@@ -1,0 +1,18 @@
+type Array[T] = {
+    data: ^T,
+    length: Integer
+}
+
+type Point = {
+    x: Integer,
+    y: Integer
+}
+
+val num: Integer = 100
+val nums: Array[Integer] = Array[Integer] { data: &num, length: 1 }
+
+val point: Point = Point { x: 10, y: 20 }
+val points: Array[Point] = Array[Point] { data: &point, length: 1 }
+
+val flag: Bool = true
+val flags: Array[Bool] = Array[Bool] { data: &flag, length: 1 }

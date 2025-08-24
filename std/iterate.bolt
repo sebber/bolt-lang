@@ -1,0 +1,9 @@
+/** Bolt Standard Library - Iterator Module */
+
+/** 
+ * The iterate function is handled specially by the compiler
+ * This is just a placeholder for type checking
+ */
+export fun iterate(arr: Array[Integer]): Integer {
+    return 0
+}

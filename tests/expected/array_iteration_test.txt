@@ -1,0 +1,23 @@
+Array iteration test:
+Element at 
+0
+: 
+10
+Element at 
+1
+: 
+20
+Element at 
+2
+: 
+30
+Element at 
+3
+: 
+40
+Element at 
+4
+: 
+50
+Total sum: 
+150

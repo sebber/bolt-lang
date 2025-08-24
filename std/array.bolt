@@ -1,14 +1,62 @@
-// Bolt Standard Library - Array Module
+/** Bolt Standard Library - Array Module */
 
-export fun length(arr: Array): Integer {
-    // For now, this would need to be implemented in the runtime
-    // In a real implementation, we'd track array length
-    return 0
+/** 
+ * Array functions for working with built-in array literals
+ * Note: These work with the built-in array syntax [1, 2, 3]
+ * For-in loops currently only work with array literals, not variables
+ */
+
+/** Get the first element of an integer array */
+export fun first(arr: [Integer]): Integer {
+    return arr[0]
 }
 
-export fun sum(arr: Array): Integer {
-    // For now, simplified - would iterate through array in real implementation
-    var total := 0
-    // In future: for item in arr { total := total + item }
-    return total
+/** Get the last element of an integer array (requires length) */
+export fun last(arr: [Integer], length: Integer): Integer {
+    return arr[length - 1]
+}
+
+/** Get element at index */
+export fun at(arr: [Integer], index: Integer): Integer {
+    return arr[index]
+}
+
+/** Simple sum function for small arrays */
+export fun sum3(a: Integer, b: Integer, c: Integer): Integer {
+    return a + b + c
+}
+
+/** Simple sum function for 5 elements */
+export fun sum5(a: Integer, b: Integer, c: Integer, d: Integer, e: Integer): Integer {
+    return a + b + c + d + e
+}
+
+/** Max of two values */
+export fun max2(a: Integer, b: Integer): Integer {
+    if a > b {
+        return a
+    } else {
+        return b
+    }
+}
+
+/** Max of three values */
+export fun max3(a: Integer, b: Integer, c: Integer): Integer {
+    val ab := max2(a, b)
+    return max2(ab, c)
+}
+
+/** Min of two values */
+export fun min2(a: Integer, b: Integer): Integer {
+    if a < b {
+        return a
+    } else {
+        return b
+    }
+}
+
+/** Min of three values */
+export fun min3(a: Integer, b: Integer, c: Integer): Integer {
+    val ab := min2(a, b)
+    return min2(ab, c)
 }

@@ -449,8 +449,93 @@ impl Parser {
                 let val = name.clone();
                 self.advance();
                 
-                // Check if this is a function call
-                if self.peek().token_type == TokenType::LeftParen {
+                // Only parse as generic type constructor if followed by [Type] { ... }
+                // We need to look ahead to distinguish from array access like numbers[0]
+                if self.peek().token_type == TokenType::LeftBracket {
+                    // Look ahead to see if this looks like a generic type
+                    // Save current position in case we need to backtrack
+                    let saved_pos = self.current;
+                    self.advance(); // consume '['
+                    
+                    // Try to determine if this is a type or expression
+                    // If the first token after [ is a type keyword or uppercase identifier, it's likely a generic
+                    let is_generic = match &self.peek().token_type {
+                        TokenType::Identifier(n) => n.chars().next().map_or(false, |c| c.is_uppercase()),
+                        _ => false
+                    };
+                    
+                    if is_generic {
+                        // Parse as generic type
+                        let mut type_args = Vec::new();
+                        
+                        while self.peek().token_type != TokenType::RightBracket && !self.is_at_end() {
+                            type_args.push(self.parse_type());
+                            if self.peek().token_type == TokenType::Comma {
+                                self.advance(); // consume ','
+                            }
+                        }
+                        
+                        if self.peek().token_type != TokenType::RightBracket {
+                            panic!("Expected ']' after generic type arguments");
+                        }
+                        self.advance(); // consume ']'
+                        
+                        // Check if this is followed by a struct literal
+                        if self.peek().token_type == TokenType::LeftBrace {
+                        // Parse generic struct literal like Array[Integer] { ... }
+                        self.advance(); // consume '{'
+                        let mut fields = Vec::new();
+                        
+                        while self.peek().token_type != TokenType::RightBrace && !self.is_at_end() {
+                            // Skip newlines
+                            if self.peek().token_type == TokenType::Newline {
+                                self.advance();
+                                continue;
+                            }
+                            
+                            let field_name = match &self.advance().token_type {
+                                TokenType::Identifier(name) => name.clone(),
+                                _ => panic!("Expected field name in struct literal"),
+                            };
+                            
+                            if self.peek().token_type != TokenType::Colon {
+                                panic!("Expected ':' after field name in struct literal");
+                            }
+                            self.advance(); // consume ':'
+                            
+                            let field_value = self.parse_expression();
+                            
+                            fields.push(StructField {
+                                name: field_name,
+                                value: field_value,
+                            });
+                            
+                            if self.peek().token_type == TokenType::Comma {
+                                self.advance(); // consume ','
+                            }
+                        }
+                        
+                        if self.peek().token_type != TokenType::RightBrace {
+                            panic!("Expected '}}' after struct fields");
+                        }
+                        self.advance(); // consume '}'
+                        
+                        // Pass both the base name and type arguments to the code generator
+                        Expression::StructLiteral {
+                            type_name: val,
+                            type_args: Some(type_args),
+                            fields,
+                        }
+                        } else {
+                            // Just a generic type reference, not a constructor
+                            Expression::Identifier(val) // TODO: handle generic type expressions properly
+                        }
+                    } else {
+                        // Not a generic type, backtrack and let it be handled as array access
+                        self.current = saved_pos;
+                        Expression::Identifier(val)
+                    }
+                } else if self.peek().token_type == TokenType::LeftParen {
                     self.advance(); // consume '('
                     let mut args = Vec::new();
                     
@@ -547,6 +632,7 @@ impl Parser {
                     
                     Expression::StructLiteral {
                         type_name: val,
+                        type_args: None,
                         fields,
                     }
                 } else {

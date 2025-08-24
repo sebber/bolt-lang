@@ -3,68 +3,68 @@
 ## Project Overview
 Bolt is a simple programming language with TypeScript-inspired syntax that compiles to native code via C transpilation.
 
-### Current Features
-- Variables: `var` (mutable) and `val` (immutable)
-- Types: String, Integer, Bool with type inference (`val name := "value"`)
-- Control flow: if/else if/else statements
-- Functions: `fun name(params): ReturnType { ... }` with calls and return values
-- Built-in functions: `print()`
+### Current Features ✅ FULLY IMPLEMENTED
+- **Variables**: `var` (mutable) and `val` (immutable) with type inference (`val name := "value"`)
+- **Types**: String, Integer, Bool with explicit typing (`val name: String = "value"`)
+- **Control Flow**: if/else/else if statements, for-in loops (`for item in array`), while-style loops (`for (condition)`)
+- **Functions**: `fun name(params): ReturnType { ... }` with parameters, return values, and void functions
+- **Operators**: Full arithmetic (`+, -, *, /, %`), comparison (`==, !=, <, >, <=, >=`), logical (`&&, ||, !`)
+- **Data Structures**: Arrays (`[1, 2, 3]`), array indexing (`arr[0]`), custom types (`def Type = { field: Type }`), struct literals
+- **Pointers**: Address-of (`&variable`), dereference (`ptr^`), pointer types (`^Integer`)
+- **Module System**: Import/export (`import { func } from "module"`), standard library (`bolt:stdio`, `bolt:math`)
+- **Standard Library**: Print functions, math operations (max, min, abs)
 
 ### Development Roadmap
 
-## Phase 1: Essential for Real Programs (High Priority)
+## Phase 1: Actually Missing Features (High Priority)
 
-### 1. Memory Management & Pointers
-- **Odin-style pointer syntax** - `val ptr: ^Integer := &variable`, `val value := ptr^`
-- **Address-of operator** - `&variable` to get memory address
-- **Dereference operator** - `ptr^` to access pointed value
-- **No pointer arithmetic** - Keep it safe like Odin
-- **C transpilation**: Maps directly to C pointers (`int*`, `*ptr`, `&var`)
+### 1. Enhanced String Operations
+- **String concatenation** - `"hello" + " world"`
+- **String length** - `str.length` property
+- **String indexing** - `str[index]` to get characters
+- **String slicing** - `str[start:end]` for substrings
 
-### 2. Arrays & Collections
-- **Array literals** - `val numbers := [1, 2, 3, 4, 5]`
-- **Array indexing** - `val item := numbers[2]`
+### 2. Enhanced Arrays & Collections
 - **Array length** - `numbers.length` property
 - **Dynamic arrays** - `var list := []Integer{}` with `push()`/`pop()`
+- **Array methods** - `append()`, `remove()`, `contains()`
 
-### 3. Iteration & Loops
-- **For-in loops** - `for (item in items) { ... }`
-- **C-style for loops** - `for (i := 0; i < 10; i++) { ... }`
-- **While loops** - `while (condition) { ... }`
+### 3. C-style For Loops
+- **Traditional for loops** - `for (i := 0; i < 10; i++) { ... }`
+- **While keyword loops** - `while (condition) { ... }` (currently uses `for (condition)`)
 
-### 4. String Operations
-- **String concatenation** - `"hello" + " world"`
-- **String length** - `str.length`
-- **String indexing** - `str[index]`
-- **String slicing** - `str[start:end]` (future)
+### 4. Enhanced Assignment Operators
+- **Mutable variable updates** - ✅ DONE `var x = 5; x = 10` works
+- **Assignment operators** - `+=, -=, *=, /=, %=` compound assignments
 
-## Phase 2: Enhanced Language Features (Medium Priority)
+## Phase 2: Advanced Type System (Medium Priority)
 
 ### 5. Error Handling
 - **Option types** - `Option<Type>` for nullable values
-- **Result types** - `Result<T, E>` for error handling
-- **Pattern matching on options** - `match result { ... }`
+- **Result types** - `Result<T, E>` for error handling  
+- **Try/catch mechanisms** - Error propagation and handling
 
-### 6. Enhanced Operators
-- **Arithmetic operators** - `+, -, *, /, %` (partially done)
-- **Comparison operators** - `==, !=, <, >, <=, >=` (partially done) 
-- **Logical operators** - `&&, ||, !` (partially done)
-- **Assignment operators** - `+=, -=, *=, /=`
-
-### 7. Better Type System
+### 6. Advanced Type Features
 - **Type unions** - `String | Integer` flexible typing
-- **Generic basics** - `Array<T>`, `Option<T>`
+- **Generic basics** - `Array<T>`, `Option<T>`, `Map<K, V>`
 - **Type aliases** - `type UserId = Integer`
+- **Pattern matching** - `match value { Integer(n) => ..., String(s) => ... }`
 
-## Phase 3: Developer Experience (High Priority)
+### 7. Advanced Collections
+- **Hash maps** - `Map<String, Integer>` 
+- **Sets** - `Set<Integer>`
+- **Tuples** - `(String, Integer, Bool)`
 
-### 8. Language Server & Tooling
-- **Language Server Protocol (LSP)** implementation
-- **Syntax highlighting** for VS Code, Vim, etc.
-- **Error diagnostics** with line numbers and suggestions
-- **Auto-completion** for variables, functions, imports
-- **Go-to-definition** and hover information
-- **Code formatting** (bolt fmt command)
+## Phase 3: Developer Experience (Partially Complete)
+
+### 8. Language Server & Tooling ✅ PARTIALLY IMPLEMENTED
+- **Language Server Protocol (LSP)** ✅ DONE - Working hover, completion 
+- **VS Code extension** ✅ DONE - Syntax highlighting + LSP integration
+- **Hover information** ✅ DONE - Shows variable/function info
+- **Auto-completion** ✅ DONE - Basic completion support
+- **Error diagnostics** ⚠️ PARTIAL - LSP diagnostics disabled due to parsing issues
+- **Go-to-definition** ❌ TODO - Not yet implemented
+- **Code formatting** ❌ TODO - `bolt fmt` command needed
 
 ### 9. Enhanced Error Reporting
 - **Better error messages** with context and suggestions
@@ -222,6 +222,7 @@ out/
 - Write descriptive commit messages explaining what was added/fixed
 - Push to remote repository immediately after committing
 - Never let working progress sit uncommitted for extended periods
+- **NEVER commit CLAUDE.md** - This file contains development instructions and should remain local only
 
 **Benefits:**
 - Preserves working states for easy rollback

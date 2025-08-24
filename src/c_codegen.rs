@@ -1,11 +1,35 @@
-use std::collections::HashMap;
-use crate::ast::{Program, Statement, Expression, Type, BinaryOperator, UnaryOperator};
+use std::collections::{HashMap, HashSet};
+use crate::ast::{Program, Statement, Expression, Type, BinaryOperator, UnaryOperator, Field};
 use crate::module::ModuleSystem;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MonomorphicType {
+    pub base_name: String,      // e.g., "Array", "Map"
+    pub type_args: Vec<String>, // e.g., ["Integer"], ["String", "Integer"] 
+}
+
+impl MonomorphicType {
+    pub fn new(base_name: String, type_args: Vec<String>) -> Self {
+        Self { base_name, type_args }
+    }
+    
+    pub fn mangled_name(&self) -> String {
+        if self.type_args.is_empty() {
+            self.base_name.clone()
+        } else {
+            format!("{}_{}", self.base_name, self.type_args.join("_"))
+        }
+    }
+}
 
 pub struct CCodeGen {
     variables: HashMap<String, String>,
     functions: Vec<String>,
     main_code: String,
+    // Monomorphization state
+    generic_types: HashMap<String, (Vec<String>, Vec<Field>)>, // base_name -> (type_params, fields)
+    required_monomorphs: HashSet<MonomorphicType>, // Track which concrete types are needed
+    generated_monomorphs: HashMap<MonomorphicType, String>, // Cache generated C code
 }
 
 impl CCodeGen {
@@ -14,7 +38,238 @@ impl CCodeGen {
             variables: HashMap::new(),
             functions: Vec::new(),
             main_code: String::new(),
+            generic_types: HashMap::new(),
+            required_monomorphs: HashSet::new(),
+            generated_monomorphs: HashMap::new(),
         }
+    }
+    
+    // Add a generic type definition to the registry
+    fn register_generic_type(&mut self, name: String, type_params: Vec<String>, fields: Vec<Field>) {
+        self.generic_types.insert(name, (type_params, fields));
+    }
+    
+    // Mark a concrete generic type as needed for generation
+    fn require_monomorph(&mut self, base_name: String, type_args: Vec<String>) {
+        let monomorph = MonomorphicType::new(base_name, type_args);
+        self.required_monomorphs.insert(monomorph);
+    }
+    
+    // Generate C struct for a specific monomorphic type
+    fn generate_monomorphic_struct(&mut self, monomorph: &MonomorphicType) -> String {
+        if let Some(cached) = self.generated_monomorphs.get(monomorph) {
+            return cached.clone();
+        }
+        
+        if let Some((type_params, fields)) = self.generic_types.get(&monomorph.base_name) {
+            let mut result = String::new();
+            let struct_name = monomorph.mangled_name();
+            
+            result.push_str(&format!("typedef struct {{\n"));
+            
+            for field in fields {
+                let concrete_type = self.substitute_type_params(&field.field_type, type_params, &monomorph.type_args);
+                let field_type_str = self.type_to_c_string(&concrete_type);
+                result.push_str(&format!("    {} {};\n", field_type_str, field.name));
+            }
+            
+            result.push_str(&format!("}} {};\n\n", struct_name));
+            
+            self.generated_monomorphs.insert(monomorph.clone(), result.clone());
+            result
+        } else {
+            panic!("Unknown generic type: {}", monomorph.base_name);
+        }
+    }
+    
+    // Substitute type parameters with concrete types
+    fn substitute_type_params(&self, generic_type: &Type, type_params: &[String], concrete_types: &[String]) -> Type {
+        match generic_type {
+            Type::Custom(name) => {
+                // Check if this is a type parameter
+                if let Some(index) = type_params.iter().position(|param| param == name) {
+                    if let Some(concrete_type) = concrete_types.get(index) {
+                        // Convert concrete type name to Type enum
+                        match concrete_type.as_str() {
+                            "Integer" => Type::Integer,
+                            "String" => Type::String,
+                            "Bool" => Type::Bool,
+                            _ => Type::Custom(concrete_type.clone()),
+                        }
+                    } else {
+                        generic_type.clone()
+                    }
+                } else {
+                    generic_type.clone()
+                }
+            }
+            Type::Pointer(inner) => {
+                let substituted_inner = self.substitute_type_params(inner.as_ref(), type_params, concrete_types);
+                Type::Pointer(Box::new(substituted_inner))
+            }
+            Type::Generic { name, type_params: inner_params } => {
+                let substituted_params: Vec<Type> = inner_params.iter()
+                    .map(|param| self.substitute_type_params(param, type_params, concrete_types))
+                    .collect();
+                Type::Generic { name: name.clone(), type_params: substituted_params }
+            }
+            _ => generic_type.clone(),
+        }
+    }
+    
+    // Convert Type to C type string
+    fn type_to_c_string(&self, t: &Type) -> String {
+        match t {
+            Type::Integer => "int".to_string(),
+            Type::String => "char*".to_string(),
+            Type::Bool => "int".to_string(),
+            Type::Pointer(inner) => format!("{}*", self.type_to_c_string(inner.as_ref())),
+            Type::Custom(name) => name.clone(),
+            Type::Generic { name, type_params } => {
+                // Generate monomorphic type name
+                let type_arg_names: Vec<String> = type_params.iter()
+                    .map(|t| match t {
+                        Type::Integer => "Integer".to_string(),
+                        Type::String => "String".to_string(),
+                        Type::Bool => "Bool".to_string(),
+                        Type::Custom(n) => n.clone(),
+                        _ => "Unknown".to_string(), // TODO: Handle nested generics
+                    })
+                    .collect();
+                MonomorphicType::new(name.clone(), type_arg_names).mangled_name()
+            }
+            _ => "void*".to_string(),
+        }
+    }
+    
+    // Analyze statement for generic type usage
+    fn analyze_statement_for_generic_usage(&mut self, statement: &Statement) {
+        match statement {
+            Statement::VarDecl { type_annotation: Some(t), value, .. } |
+            Statement::ValDecl { type_annotation: Some(t), value, .. } => {
+                self.analyze_type_for_generic_usage(t);
+                self.analyze_expression_for_generic_usage(value);
+            }
+            Statement::VarDecl { value, .. } | Statement::ValDecl { value, .. } => {
+                self.analyze_expression_for_generic_usage(value);
+            }
+            Statement::Function { params, return_type, .. } => {
+                for param in params {
+                    self.analyze_type_for_generic_usage(&param.param_type);
+                }
+                if let Some(ret_type) = return_type {
+                    self.analyze_type_for_generic_usage(ret_type);
+                }
+            }
+            Statement::Expression(expr) => {
+                self.analyze_expression_for_generic_usage(expr);
+            }
+            _ => {
+                // Other statement types don't contain type information
+            }
+        }
+    }
+    
+    // Analyze expression for generic type usage
+    fn analyze_expression_for_generic_usage(&mut self, expr: &Expression) {
+        match expr {
+            Expression::StructLiteral { type_name, type_args, fields } => {
+                // If this is a generic struct literal, register the monomorphic type
+                if let Some(args) = type_args {
+                    let type_arg_names: Vec<String> = args.iter()
+                        .map(|t| match t {
+                            Type::Integer => "Integer".to_string(),
+                            Type::String => "String".to_string(),
+                            Type::Bool => "Bool".to_string(),
+                            Type::Custom(n) => n.clone(),
+                            _ => "Unknown".to_string(),
+                        })
+                        .collect();
+                    self.require_monomorph(type_name.clone(), type_arg_names);
+                }
+                
+                // Recursively analyze field expressions
+                for field in fields {
+                    self.analyze_expression_for_generic_usage(&field.value);
+                }
+            }
+            Expression::FunctionCall { args, .. } => {
+                for arg in args {
+                    self.analyze_expression_for_generic_usage(arg);
+                }
+            }
+            Expression::NamespacedFunctionCall { args, .. } => {
+                for arg in args {
+                    self.analyze_expression_for_generic_usage(arg);
+                }
+            }
+            Expression::BinaryOp { left, right, .. } => {
+                self.analyze_expression_for_generic_usage(left);
+                self.analyze_expression_for_generic_usage(right);
+            }
+            Expression::UnaryOp { operand, .. } => {
+                self.analyze_expression_for_generic_usage(operand);
+            }
+            Expression::FieldAccess { object, .. } => {
+                self.analyze_expression_for_generic_usage(object);
+            }
+            Expression::ArrayAccess { array, index } => {
+                self.analyze_expression_for_generic_usage(array);
+                self.analyze_expression_for_generic_usage(index);
+            }
+            Expression::AddressOf { operand } => {
+                self.analyze_expression_for_generic_usage(operand);
+            }
+            Expression::Dereference { operand } => {
+                self.analyze_expression_for_generic_usage(operand);
+            }
+            _ => {
+                // Other expression types don't contain type information
+            }
+        }
+    }
+    
+    // Analyze type for generic usage and register required monomorphs
+    fn analyze_type_for_generic_usage(&mut self, t: &Type) {
+        match t {
+            Type::Generic { name, type_params } => {
+                let type_arg_names: Vec<String> = type_params.iter()
+                    .map(|param_type| match param_type {
+                        Type::Integer => "Integer".to_string(),
+                        Type::String => "String".to_string(),
+                        Type::Bool => "Bool".to_string(),
+                        Type::Custom(n) => n.clone(),
+                        Type::Generic { .. } => {
+                            // Recursively analyze nested generic types
+                            self.analyze_type_for_generic_usage(param_type);
+                            self.type_to_c_string(param_type) // Use the mangled name
+                        }
+                        _ => "Unknown".to_string(),
+                    })
+                    .collect();
+                
+                self.require_monomorph(name.clone(), type_arg_names);
+            }
+            Type::Pointer(inner) => {
+                self.analyze_type_for_generic_usage(inner.as_ref());
+            }
+            _ => {
+                // Other types don't need monomorphization
+            }
+        }
+    }
+    
+    // Generate all required monomorphic types
+    fn generate_all_monomorphs(&mut self) -> String {
+        let mut result = String::new();
+        let required_types: Vec<MonomorphicType> = self.required_monomorphs.iter().cloned().collect();
+        
+        for monomorph in required_types {
+            let struct_code = self.generate_monomorphic_struct(&monomorph);
+            result.push_str(&struct_code);
+        }
+        
+        result
     }
 
     pub fn compile_program(&mut self, program: Program) -> String {
@@ -22,14 +277,33 @@ impl CCodeGen {
         result.push_str("#include <stdio.h>\n");
         result.push_str("#include <string.h>\n\n");
         
-        // First pass: collect functions, type definitions, and separate main code
+        // Pass 1: Collect type definitions and analyze usage
+        let mut remaining_statements = Vec::new();
         for statement in program.statements {
+            match statement {
+                Statement::TypeDef { .. } => {
+                    self.compile_type_definition(statement, &mut result);
+                }
+                _ => {
+                    remaining_statements.push(statement);
+                }
+            }
+        }
+        
+        // Pass 2: Analyze remaining statements for generic type usage
+        for statement in &remaining_statements {
+            self.analyze_statement_for_generic_usage(statement);
+        }
+        
+        // Pass 3: Generate all required monomorphic types
+        let monomorphic_code = self.generate_all_monomorphs();
+        result.push_str(&monomorphic_code);
+        
+        // Pass 4: Generate functions and main code
+        for statement in remaining_statements {
             match statement {
                 Statement::Function { .. } => {
                     self.compile_function(statement);
-                }
-                Statement::TypeDef { .. } => {
-                    self.compile_type_definition(statement, &mut result);
                 }
                 _ => {
                     self.compile_main_statement(statement);
@@ -60,18 +334,37 @@ impl CCodeGen {
         // Compile functions from all modules first
         self.compile_all_module_functions(module_system, &mut result);
         
-        // First pass: collect functions, type definitions, and separate main code
+        // Pass 1: Collect type definitions and analyze usage
+        let mut remaining_statements = Vec::new();
         for statement in program.statements {
             match statement {
-                Statement::Function { .. } => {
-                    self.compile_function(statement);
-                }
                 Statement::TypeDef { .. } => {
                     self.compile_type_definition(statement, &mut result);
                 }
                 Statement::Import { .. } | Statement::Export { .. } => {
                     // Skip import/export statements in code generation
                     // They're handled by the module system
+                }
+                _ => {
+                    remaining_statements.push(statement);
+                }
+            }
+        }
+        
+        // Pass 2: Analyze remaining statements for generic type usage
+        for statement in &remaining_statements {
+            self.analyze_statement_for_generic_usage(statement);
+        }
+        
+        // Pass 3: Generate all required monomorphic types
+        let monomorphic_code = self.generate_all_monomorphs();
+        result.push_str(&monomorphic_code);
+        
+        // Pass 4: Generate functions and main code
+        for statement in remaining_statements {
+            match statement {
+                Statement::Function { .. } => {
+                    self.compile_function(statement);
                 }
                 _ => {
                     self.compile_main_statement(statement);
@@ -184,10 +477,25 @@ impl CCodeGen {
                         self.main_code.push_str(&format!("    int {} = {};\n", name, expr_str));
                         self.variables.insert(name, "bool".to_string()); // unary ! always returns bool
                     }
-                    Expression::StructLiteral { type_name, .. } => {
+                    Expression::StructLiteral { type_name, type_args, .. } => {
                         let expr_str = self.compile_expression_to_string(value.clone());
-                        self.main_code.push_str(&format!("    {} {} = {};\n", type_name, name, expr_str));
-                        self.variables.insert(name, type_name.clone()); // track custom type
+                        let var_type = if let Some(args) = type_args {
+                            // Generate monomorphic type name for generic structs
+                            let type_arg_names: Vec<String> = args.iter()
+                                .map(|t| match t {
+                                    Type::Integer => "Integer".to_string(),
+                                    Type::String => "String".to_string(),
+                                    Type::Bool => "Bool".to_string(),
+                                    Type::Custom(n) => n.clone(),
+                                    _ => "Unknown".to_string(),
+                                })
+                                .collect();
+                            MonomorphicType::new(type_name.clone(), type_arg_names).mangled_name()
+                        } else {
+                            type_name.clone()
+                        };
+                        self.main_code.push_str(&format!("    {} {} = {};\n", var_type, name, expr_str));
+                        self.variables.insert(name, var_type); // track custom type
                     }
                     Expression::FieldAccess { .. } => {
                         let expr_str = self.compile_expression_to_string(value.clone());
@@ -283,10 +591,25 @@ impl CCodeGen {
                         self.main_code.push_str(&format!("    int {} = {};\n", name, expr_str));
                         self.variables.insert(name, "bool".to_string()); // unary ! always returns bool
                     }
-                    Expression::StructLiteral { type_name, .. } => {
+                    Expression::StructLiteral { type_name, type_args, .. } => {
                         let expr_str = self.compile_expression_to_string(value.clone());
-                        self.main_code.push_str(&format!("    {} {} = {};\n", type_name, name, expr_str));
-                        self.variables.insert(name, type_name.clone()); // track custom type
+                        let var_type = if let Some(args) = type_args {
+                            // Generate monomorphic type name for generic structs
+                            let type_arg_names: Vec<String> = args.iter()
+                                .map(|t| match t {
+                                    Type::Integer => "Integer".to_string(),
+                                    Type::String => "String".to_string(),
+                                    Type::Bool => "Bool".to_string(),
+                                    Type::Custom(n) => n.clone(),
+                                    _ => "Unknown".to_string(),
+                                })
+                                .collect();
+                            MonomorphicType::new(type_name.clone(), type_arg_names).mangled_name()
+                        } else {
+                            type_name.clone()
+                        };
+                        self.main_code.push_str(&format!("    {} {} = {};\n", var_type, name, expr_str));
+                        self.variables.insert(name, var_type); // track custom type
                     }
                     Expression::FieldAccess { .. } => {
                         let expr_str = self.compile_expression_to_string(value.clone());
@@ -381,24 +704,55 @@ impl CCodeGen {
                         self.main_code.push_str("    }\n");
                     }
                     Expression::Identifier(array_name) => {
-                        // For existing array variables, we need to calculate the size at runtime
-                        // We'll use sizeof to get the array size
-                        let size_name = format!("_size_of_{}", array_name);
+                        let array_type = self.variables.get(&array_name)
+                            .unwrap_or(&"unknown".to_string()).clone();
+                        
+                        
                         let loop_var = format!("_i_for_{}", self.variables.len());
                         
-                        self.main_code.push_str(&format!("    int {} = sizeof({}) / sizeof({}[0]);\n", 
-                            size_name, array_name, array_name));
-                        
-                        // Generate for loop
-                        self.main_code.push_str(&format!("    for (int {} = 0; {} < {}; {}++) {{\n", 
-                            loop_var, loop_var, size_name, loop_var));
-                        
-                        // Declare loop variable
-                        self.main_code.push_str(&format!("        int {} = {}[{}];\n", 
-                            variable, array_name, loop_var));
-                        
-                        // Store variable for loop body
-                        self.variables.insert(variable.clone(), "int".to_string());
+                        // Check if this is an Array[T] type
+                        if array_type.contains("Array_") {
+                            // For Array[T] types, use array.length
+                            self.main_code.push_str(&format!("    for (int {} = 0; {} < {}.length; {}++) {{\n", 
+                                loop_var, loop_var, array_name, loop_var));
+                            
+                            // Extract element type from Array_Type name  
+                            let element_type = if array_type.contains("Array_Integer") {
+                                "int"
+                            } else if array_type.contains("Array_String") {
+                                "char*"
+                            } else if array_type.contains("Array_Bool") {
+                                "int" // bool as int
+                            } else if array_type.starts_with("Array_") {
+                                // Custom type like Array_Person -> Person
+                                &array_type[6..] // Remove "Array_" prefix
+                            } else {
+                                "int" // default
+                            };
+                            
+                            // Declare loop variable - access via array.data[index]
+                            self.main_code.push_str(&format!("        {} {} = {}.data[{}];\n", 
+                                element_type, variable, array_name, loop_var));
+                            
+                            self.variables.insert(variable.clone(), element_type.to_string());
+                        } else {
+                            // For regular arrays, use sizeof
+                            let size_name = format!("_size_of_{}", array_name);
+                            
+                            self.main_code.push_str(&format!("    int {} = sizeof({}) / sizeof({}[0]);\n", 
+                                size_name, array_name, array_name));
+                            
+                            // Generate for loop
+                            self.main_code.push_str(&format!("    for (int {} = 0; {} < {}; {}++) {{\n", 
+                                loop_var, loop_var, size_name, loop_var));
+                            
+                            // Declare loop variable
+                            self.main_code.push_str(&format!("        int {} = {}[{}];\n", 
+                                variable, array_name, loop_var));
+                            
+                            // Store variable for loop body
+                            self.variables.insert(variable.clone(), "int".to_string());
+                        }
                         
                         // Compile loop body
                         for stmt in body {
@@ -406,6 +760,70 @@ impl CCodeGen {
                         }
                         
                         self.main_code.push_str("    }\n");
+                    }
+                    Expression::FunctionCall { name, args } => {
+                        if name == "iterate" && args.len() == 1 {
+                            // Handle iterate(array) pattern
+                            match &args[0] {
+                                Expression::Identifier(array_name) => {
+                                    let array_type = self.variables.get(array_name)
+                                        .unwrap_or(&"int*".to_string()).clone();
+                                    
+                                    let loop_var = format!("_i_iter_{}", self.variables.len());
+                                    
+                                    // For Array[T] types, use array.length
+                                    if array_type.contains("Array_") {
+                                        self.main_code.push_str(&format!("    for (int {} = 0; {} < {}.length; {}++) {{\n", 
+                                            loop_var, loop_var, array_name, loop_var));
+                                        
+                                        // Extract element type from Array_Type name
+                                        let element_type = if array_type.contains("Array_Integer") {
+                                            "int"
+                                        } else if array_type.contains("Array_String") {
+                                            "char*"
+                                        } else if array_type.contains("Array_Bool") {
+                                            "int" // bool as int
+                                        } else if array_type.starts_with("Array_") {
+                                            // Custom type like Array_Person -> Person
+                                            &array_type[6..] // Remove "Array_" prefix
+                                        } else {
+                                            "int" // default
+                                        };
+                                        
+                                        // Declare loop variable - access via array.data[index]
+                                        self.main_code.push_str(&format!("        {} {} = {}.data[{}];\n", 
+                                            element_type, variable, array_name, loop_var));
+                                        
+                                        self.variables.insert(variable.clone(), element_type.to_string());
+                                    } else {
+                                        // For regular arrays, use sizeof
+                                        let size_name = format!("_size_of_{}", array_name);
+                                        self.main_code.push_str(&format!("    int {} = sizeof({}) / sizeof({}[0]);\n", 
+                                            size_name, array_name, array_name));
+                                        
+                                        self.main_code.push_str(&format!("    for (int {} = 0; {} < {}; {}++) {{\n", 
+                                            loop_var, loop_var, size_name, loop_var));
+                                        
+                                        self.main_code.push_str(&format!("        int {} = {}[{}];\n", 
+                                            variable, array_name, loop_var));
+                                        
+                                        self.variables.insert(variable.clone(), "int".to_string());
+                                    }
+                                    
+                                    // Compile loop body
+                                    for stmt in body {
+                                        self.compile_main_statement_with_indent(stmt, "        ");
+                                    }
+                                    
+                                    self.main_code.push_str("    }\n");
+                                }
+                                _ => {
+                                    panic!("iterate() only supports identifier arguments for now");
+                                }
+                            }
+                        } else {
+                            panic!("For-in loops with function calls only support iterate() for now");
+                        }
                     }
                     _ => {
                         self.main_code.push_str("    // TODO: for-in with complex expression\n");
@@ -650,23 +1068,21 @@ impl CCodeGen {
 
     fn compile_type_definition(&mut self, statement: Statement, result: &mut String) {
         if let Statement::TypeDef { name, type_params, fields } = statement {
-            result.push_str(&format!("typedef struct {{\n"));
-            
-            for field in &fields {
-                let field_type_str = match field.field_type {
-                    Type::Integer => "int",
-                    Type::String => "char*",
-                    Type::Bool => "int",
-                    Type::Array(_) => "int*", // For now, assume int arrays
-                    Type::Pointer(_) => "int*", // For now, assume int pointers
-                    Type::Custom(ref type_name) => type_name,
-                    Type::Generic { .. } => "void*", // TODO: Generic field types
-                    Type::TypeParameter(_) => "void*", // TODO: Type parameter field types // Reference to other custom type
-                };
-                result.push_str(&format!("    {} {};\n", field_type_str, field.name));
+            if !type_params.is_empty() {
+                // This is a generic type definition - register it for monomorphization
+                self.register_generic_type(name.clone(), type_params, fields);
+                // Don't generate C code yet - wait for concrete instantiations
+            } else {
+                // This is a regular (non-generic) type definition
+                result.push_str(&format!("typedef struct {{\n"));
+                
+                for field in &fields {
+                    let field_type_str = self.type_to_c_string(&field.field_type);
+                    result.push_str(&format!("    {} {};\n", field_type_str, field.name));
+                }
+                
+                result.push_str(&format!("}} {};\n\n", name));
             }
-            
-            result.push_str(&format!("}} {};\n\n", name));
         }
     }
 
@@ -837,8 +1253,23 @@ impl CCodeGen {
                 };
                 format!("({}{})", op_str, operand_str)
             }
-            Expression::StructLiteral { type_name, fields } => {
-                let mut struct_str = format!("(({}) {{", type_name);
+            Expression::StructLiteral { type_name, type_args, fields } => {
+                let struct_type = if let Some(args) = type_args {
+                    // Generate monomorphic type name for generic structs
+                    let type_arg_names: Vec<String> = args.iter()
+                        .map(|t| match t {
+                            Type::Integer => "Integer".to_string(),
+                            Type::String => "String".to_string(),
+                            Type::Bool => "Bool".to_string(),
+                            Type::Custom(n) => n.clone(),
+                            _ => "Unknown".to_string(),
+                        })
+                        .collect();
+                    MonomorphicType::new(type_name.clone(), type_arg_names).mangled_name()
+                } else {
+                    type_name.clone()
+                };
+                let mut struct_str = format!("(({}) {{", struct_type);
                 for (i, field) in fields.iter().enumerate() {
                     if i > 0 {
                         struct_str.push_str(", ");

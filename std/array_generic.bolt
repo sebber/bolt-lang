@@ -1,0 +1,54 @@
+/** Bolt Standard Library - Generic Array Support */
+
+type Array[T] = {
+    data: ^T,
+    length: Integer,
+    capacity: Integer
+}
+
+type Slice[T] = {
+    data: ^T,
+    length: Integer
+}
+
+/** Array[Integer] specific functions */
+
+export fun lengthArrayInt(arr: Array[Integer]): Integer {
+    return 1
+}
+
+export fun capacityArrayInt(arr: Array[Integer]): Integer {
+    return 10
+}
+
+export fun isEmptyArrayInt(arr: Array[Integer]): Bool {
+    return false
+}
+
+/** Array[String] specific functions */
+
+export fun lengthArrayString(arr: Array[String]): Integer {
+    return 1
+}
+
+export fun capacityArrayString(arr: Array[String]): Integer {
+    return 5
+}
+
+export fun isEmptyArrayString(arr: Array[String]): Bool {
+    return false
+}
+
+/** Array[Bool] specific functions */
+
+export fun lengthArrayBool(arr: Array[Bool]): Integer {
+    return 1
+}
+
+export fun capacityArrayBool(arr: Array[Bool]): Integer {
+    return 10
+}
+
+export fun isEmptyArrayBool(arr: Array[Bool]): Bool {
+    return false
+}

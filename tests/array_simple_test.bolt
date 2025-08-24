@@ -1,0 +1,21 @@
+import { print } from "bolt:stdio"
+
+val numbers := [10, 5, 20, 15, 3]
+
+print("Testing array access:")
+
+val first := numbers[0]
+print("First: ")
+print(first)
+
+val second := numbers[1]
+print("Second: ")
+print(second)
+
+val third := numbers[2]
+print("Third: ")
+print(third)
+
+val sum := first + second + third
+print("Sum of first 3: ")
+print(sum)

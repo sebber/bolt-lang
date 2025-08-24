@@ -1,0 +1,9 @@
+Testing array access:
+First: 
+10
+Second: 
+5
+Third: 
+20
+Sum of first 3: 
+35

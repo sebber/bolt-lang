@@ -1,0 +1,9 @@
+type Array[T] = {
+    data: ^T,
+    length: Integer
+}
+
+type Car = {
+    brand: String,
+    year: Integer
+}

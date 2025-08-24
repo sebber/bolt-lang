@@ -1,0 +1,22 @@
+import { print } from "bolt:stdio"
+
+type Array[T] = {
+    data: ^T,
+    length: Integer,
+    capacity: Integer
+}
+
+val num1: Integer = 100
+val num2: Integer = 200
+
+val numbers: Array[Integer] = Array[Integer] { 
+    data: &num1,
+    length: 2, 
+    capacity: 10 
+}
+
+print("Testing for-in with Array[T]:")
+
+for item in numbers {
+    print(item)
+}

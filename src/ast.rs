@@ -127,6 +127,7 @@ pub enum Expression {
     },
     StructLiteral {
         type_name: String,
+        type_args: Option<Vec<Type>>, // For generic constructors like Array[Integer]
         fields: Vec<StructField>,
     },
     FieldAccess {
