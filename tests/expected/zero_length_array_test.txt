@@ -1,0 +1,7 @@
+Testing zero-length arrays:
+Empty array length:
+0
+Iterating empty array:
+Items processed:
+0
+Test completed successfully

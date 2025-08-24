@@ -1,0 +1,55 @@
+import { print } from "bolt:stdio"
+
+type Array[T] = {
+    data: ^T,
+    length: Integer,
+    capacity: Integer
+}
+
+type Box[T] = {
+    contents: T,
+    sealed: Bool
+}
+
+type Pair[A, B] = {
+    first: A,
+    second: B
+}
+
+print("Testing multiple generic types:")
+
+val num: Integer = 42
+val intBox: Box[Integer] = Box[Integer] {
+    contents: num,
+    sealed: false
+}
+
+print("Box contents:")
+print(intBox.contents)
+
+val str: String = "test"
+val stringBox: Box[String] = Box[String] {
+    contents: str,
+    sealed: true
+}
+
+print("String box sealed:")
+if (stringBox.sealed) {
+    print("true")
+} else {
+    print("false")
+}
+
+val flag: Bool = true
+val pair: Pair[Integer, Bool] = Pair[Integer, Bool] {
+    first: 100,
+    second: flag
+}
+
+print("Pair values:")
+print(pair.first)
+if (pair.second) {
+    print("true")
+} else {
+    print("false")
+}

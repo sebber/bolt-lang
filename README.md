@@ -128,7 +128,7 @@ cargo build --bin bolt-lsp
 
 🎉 **PRODUCTION READY** - 100% test coverage with advanced features!
 
-- **47/47 tests passing** (perfect score)
+- **51/51 tests passing** (perfect score)
 - All core language features working
 - **Generic types with monomorphization** - Array[T], custom generics
 - **Advanced iterator support** - for-in loops with Array[T] types  

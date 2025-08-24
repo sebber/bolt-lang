@@ -1,0 +1,29 @@
+import { print } from "bolt:stdio"
+
+type Array[T] = {
+    data: ^T,
+    length: Integer,
+    capacity: Integer
+}
+
+print("Testing large capacity arrays:")
+
+val value: Integer = 999
+val largeArray: Array[Integer] = Array[Integer] {
+    data: &value,
+    length: 1,
+    capacity: 1000
+}
+
+print("Large array capacity:")
+print(largeArray.capacity)
+
+print("Large array length:")
+print(largeArray.length)
+
+print("Iterating large array (should print once):")
+for item in largeArray {
+    print(item)
+}
+
+print("Large array test completed")

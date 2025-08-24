@@ -1,0 +1,6 @@
+Testing generic error handling patterns:
+Result value:
+100
+Success
+Error result:
+Error detected

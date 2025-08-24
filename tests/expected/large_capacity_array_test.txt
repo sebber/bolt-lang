@@ -1,0 +1,8 @@
+Testing large capacity arrays:
+Large array capacity:
+1000
+Large array length:
+1
+Iterating large array (should print once):
+999
+Large array test completed

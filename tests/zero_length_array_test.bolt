@@ -1,0 +1,31 @@
+import { print } from "bolt:stdio"
+
+type Array[T] = {
+    data: ^T,
+    length: Integer,
+    capacity: Integer
+}
+
+print("Testing zero-length arrays:")
+
+val dummy: Integer = 0
+val emptyIntArray: Array[Integer] = Array[Integer] {
+    data: &dummy,
+    length: 0,
+    capacity: 0
+}
+
+print("Empty array length:")
+print(emptyIntArray.length)
+
+print("Iterating empty array:")
+var count := 0
+for item in emptyIntArray {
+    count = count + 1
+    print("Should not print")
+}
+
+print("Items processed:")
+print(count)
+
+print("Test completed successfully")

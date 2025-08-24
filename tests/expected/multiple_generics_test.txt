@@ -1,0 +1,8 @@
+Testing multiple generic types:
+Box contents:
+42
+String box sealed:
+true
+Pair values:
+100
+true

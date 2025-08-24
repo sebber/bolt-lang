@@ -1,0 +1,41 @@
+import { print } from "bolt:stdio"
+
+type Array[T] = {
+    data: ^T,
+    length: Integer,
+    capacity: Integer
+}
+
+type Result[T] = {
+    value: T,
+    isError: Bool
+}
+
+print("Testing generic error handling patterns:")
+
+val number: Integer = 100
+val result: Result[Integer] = Result[Integer] {
+    value: number,
+    isError: false
+}
+
+print("Result value:")
+print(result.value)
+
+if (result.isError) {
+    print("Error occurred")
+} else {
+    print("Success")
+}
+
+val errorResult: Result[Integer] = Result[Integer] {
+    value: 0,
+    isError: true
+}
+
+print("Error result:")
+if (errorResult.isError) {
+    print("Error detected")
+} else {
+    print("No error")
+}
