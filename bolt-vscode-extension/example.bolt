@@ -3,7 +3,7 @@ import { print, println } from "bolt:stdio"
 import math from "bolt:math"
 
 // Custom type definition
-def Point = {
+type Point = {
     x: Integer,
     y: Integer
 }

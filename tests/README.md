@@ -40,7 +40,7 @@ This directory contains comprehensive tests for all Bolt language features.
 ### Data Structures
 - `struct_literal_test.bolt` - Struct creation `Person { name: "Alice" }`
 - `struct_access_test.bolt` - Field access `person.name`
-- `typedef_test.bolt` - Custom type definitions `def Point = { x: Integer }`
+- `typedef_test.bolt` - Custom type definitions `type Point = { x: Integer }`
 
 ### Module System
 - `import_test.bolt` - Basic import functionality

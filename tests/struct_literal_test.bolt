@@ -1,6 +1,6 @@
 import { print } from "bolt:stdio"
 
-def Person = {
+type Person = {
     name: String,
     age: Integer,
     active: Bool

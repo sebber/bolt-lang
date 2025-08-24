@@ -45,7 +45,7 @@ cargo build
 - Function calls with argument passing
 
 ✅ **Data Structures**:
-- Custom types: `def TypeName = { field: Type }`
+- Custom types: `type TypeName = { field: Type }`
 - Struct literals: `TypeName { field: value }`
 - Field access: `object.field` with proper type handling
 
@@ -183,7 +183,7 @@ print("Factorial: " + toString(result))
 import { print } from "bolt:stdio"
 import math from "bolt:math"
 
-def Point = {
+type Point = {
     x: Integer,
     y: Integer  
 }

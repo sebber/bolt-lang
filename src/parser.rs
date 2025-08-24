@@ -32,7 +32,7 @@ impl Parser {
         match &self.peek().token_type {
             TokenType::Var => self.parse_var_decl(),
             TokenType::Val => self.parse_val_decl(),
-            TokenType::Def => self.parse_type_def(),
+            TokenType::Type => self.parse_type_def(),
             TokenType::If => self.parse_if_statement(),
             TokenType::For => self.parse_for_loop(),
             TokenType::Fun => self.parse_function(false),

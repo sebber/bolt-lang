@@ -36,7 +36,7 @@
         },
         {
           "name": "keyword.declaration.bolt", 
-          "match": "\\b(val|var|fun|def|export|import|from)\\b"
+          "match": "\\b(val|var|fun|type|export|import|from)\\b"
         },
         {
           "name": "constant.language.bolt",
