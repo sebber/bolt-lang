@@ -183,10 +183,17 @@ impl LspServer {
                     eprintln!("LSP: Handling completion from raw JSON");
                     if let Some(id_val) = id {
                         let items = vec![
+                            // Keywords
                             json!({"label": "val", "kind": 14, "detail": "Immutable variable", "insertText": "val "}),
                             json!({"label": "var", "kind": 14, "detail": "Mutable variable", "insertText": "var "}),
                             json!({"label": "fun", "kind": 14, "detail": "Function", "insertText": "fun "}),
+                            json!({"label": "type", "kind": 14, "detail": "Type definition", "insertText": "type "}),
                             json!({"label": "print", "kind": 3, "detail": "Print function", "insertText": "print("}),
+                            
+                            // Generic types
+                            json!({"label": "Array[Integer]", "kind": 7, "detail": "Integer array", "insertText": "Array[Integer]"}),
+                            json!({"label": "Array[String]", "kind": 7, "detail": "String array", "insertText": "Array[String]"}),
+                            json!({"label": "Array[Bool]", "kind": 7, "detail": "Boolean array", "insertText": "Array[Bool]"}),
                         ];
                         
                         let response = Message {
@@ -316,18 +323,43 @@ impl LspServer {
                         eprintln!("LSP: Completion params: {}", serde_json::to_string_pretty(params).unwrap_or_default());
                     }
                     
-                    // Simple completion items without complex snippets
+                    // Enhanced completion items with generic type support
                     let items = vec![
+                        // Keywords
                         json!({"label": "val", "kind": 14, "detail": "Immutable variable", "insertText": "val "}),
                         json!({"label": "var", "kind": 14, "detail": "Mutable variable", "insertText": "var "}),
                         json!({"label": "fun", "kind": 14, "detail": "Function", "insertText": "fun "}),
+                        json!({"label": "type", "kind": 14, "detail": "Type definition", "insertText": "type "}),
                         json!({"label": "if", "kind": 14, "detail": "If statement", "insertText": "if "}),
                         json!({"label": "for", "kind": 14, "detail": "For loop", "insertText": "for "}),
                         json!({"label": "import", "kind": 14, "detail": "Import", "insertText": "import "}),
+                        json!({"label": "return", "kind": 14, "detail": "Return statement", "insertText": "return "}),
+                        
+                        // Built-in functions
                         json!({"label": "print", "kind": 3, "detail": "Print function", "insertText": "print("}),
+                        
+                        // Built-in types
                         json!({"label": "Integer", "kind": 7, "detail": "Integer type", "insertText": "Integer"}),
                         json!({"label": "String", "kind": 7, "detail": "String type", "insertText": "String"}),
                         json!({"label": "Bool", "kind": 7, "detail": "Boolean type", "insertText": "Bool"}),
+                        
+                        // Generic types and snippets
+                        json!({"label": "Array[T]", "kind": 7, "detail": "Generic array type", "insertText": "Array[T]"}),
+                        json!({"label": "Array[Integer]", "kind": 7, "detail": "Integer array", "insertText": "Array[Integer]"}),
+                        json!({"label": "Array[String]", "kind": 7, "detail": "String array", "insertText": "Array[String]"}),
+                        json!({"label": "Array[Bool]", "kind": 7, "detail": "Boolean array", "insertText": "Array[Bool]"}),
+                        
+                        // Generic type patterns
+                        json!({"label": "Result[T]", "kind": 7, "detail": "Generic result type", "insertText": "Result[T]"}),
+                        json!({"label": "Box[T]", "kind": 7, "detail": "Generic box type", "insertText": "Box[T]"}),
+                        
+                        // Common patterns
+                        json!({"label": "for in", "kind": 15, "detail": "For-in loop with Array[T]", "insertText": "for item in "}),
+                        json!({"label": "type def", "kind": 15, "detail": "Generic type definition", "insertText": "type Name[T] = { data: T }"}),
+                        
+                        // Literals
+                        json!({"label": "true", "kind": 12, "detail": "Boolean true", "insertText": "true"}),
+                        json!({"label": "false", "kind": 12, "detail": "Boolean false", "insertText": "false"}),
                     ];
                     
                     let response = Message {
@@ -554,16 +586,34 @@ impl LspServer {
                 "**`print(value)`**\n\n*Built-in function*\n\nPrints a value to the console.\n\n**Examples:**\n```bolt\nprint(\"Hello, World!\")\nprint(42)\nprint(true)\n```".to_string()
             }
             "val" => {
-                "**`val`**\n\n*Keyword*\n\nDeclares an immutable variable (constant).\n\n**Syntax:**\n```bolt\nval name := value\nval name: Type = value\n```\n\n**Examples:**\n```bolt\nval message := \"Hello\"\nval count: Integer = 42\n```".to_string()
+                "**`val`**\n\n*Keyword*\n\nDeclares an immutable variable (constant).\n\n**Syntax:**\n```bolt\nval name := value\nval name: Type = value\n```\n\n**Examples:**\n```bolt\nval message := \"Hello\"\nval count: Integer = 42\nval arr: Array[Integer] = Array[Integer] { ... }\n```".to_string()
             }
             "var" => {
                 "**`var`**\n\n*Keyword*\n\nDeclares a mutable variable.\n\n**Syntax:**\n```bolt\nvar name := value\nvar name: Type = value\n```\n\n**Examples:**\n```bolt\nvar counter := 0\nvar status: String = \"ready\"\n```".to_string()
             }
+            "type" => {
+                "**`type`**\n\n*Keyword*\n\nDeclares a custom type or generic type.\n\n**Syntax:**\n```bolt\ntype TypeName = { field: Type }\ntype Generic[T] = { data: T }\n```\n\n**Examples:**\n```bolt\ntype Person = { name: String, age: Integer }\ntype Array[T] = { data: ^T, length: Integer }\ntype Result[T] = { value: T, isError: Bool }\n```".to_string()
+            }
             "fun" => {
                 "**`fun`**\n\n*Keyword*\n\nDeclares a function.\n\n**Syntax:**\n```bolt\nfun name(param: Type): ReturnType {\n    // function body\n    return value\n}\n```\n\n**Example:**\n```bolt\nfun greet(name: String): String {\n    return \"Hello, \" + name\n}\n```".to_string()
             }
+            "for" => {
+                "**`for`**\n\n*Keyword*\n\nLoop construct with multiple forms.\n\n**For-in loop:**\n```bolt\nfor item in array {\n    print(item)\n}\n```\n\n**Condition loop:**\n```bolt\nfor (condition) {\n    // code\n}\n```\n\n**Works with Array[T] types:**\n```bolt\nfor item in myGenericArray {\n    // item is correctly typed\n}\n```".to_string()
+            }
+            "Array" => {
+                "**`Array[T]`**\n\n*Generic Type*\n\nA generic array type that can hold elements of any type T.\n\n**Definition:**\n```bolt\ntype Array[T] = {\n    data: ^T,\n    length: Integer,\n    capacity: Integer\n}\n```\n\n**Usage:**\n```bolt\nval numbers: Array[Integer] = Array[Integer] { \n    data: &value, length: 1, capacity: 10 \n}\n\nfor item in numbers {\n    print(item)  // item is Integer\n}\n```".to_string()
+            }
             "if" => {
                 "**`if`**\n\n*Keyword*\n\nConditional statement.\n\n**Syntax:**\n```bolt\nif condition {\n    // code\n} else if other_condition {\n    // code\n} else {\n    // code\n}\n```".to_string()
+            }
+            "Integer" => {
+                "**`Integer`**\n\n*Built-in Type*\n\nA 64-bit signed integer type.\n\n**Usage:**\n```bolt\nval count: Integer = 42\nval numbers: Array[Integer] = ...\n```".to_string()
+            }
+            "String" => {
+                "**`String`**\n\n*Built-in Type*\n\nA string type for text data.\n\n**Usage:**\n```bolt\nval message: String = \"Hello\"\nval names: Array[String] = ...\n```".to_string()
+            }
+            "Bool" => {
+                "**`Bool`**\n\n*Built-in Type*\n\nA boolean type with values true and false.\n\n**Usage:**\n```bolt\nval isReady: Bool = true\nval flags: Array[Bool] = ...\n```".to_string()
             }
             "true" | "false" => {
                 format!("**`{}`**\n\n*Boolean literal*\n\nA boolean value representing {} condition.", word, if word == "true" { "a true" } else { "a false" })
