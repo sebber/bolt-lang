@@ -12,7 +12,7 @@ cd bolt-vscode-extension
 
 echo "📦 Installing VS Code extension with LSP..."
 
-EXTENSION_DIR="$HOME/.vscode/extensions/bolt-language-lsp-0.3.0"
+EXTENSION_DIR="$HOME/.vscode/extensions/bolt-language-0.3.0"
 
 # Create extension directory
 mkdir -p "$EXTENSION_DIR"
