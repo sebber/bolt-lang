@@ -8,6 +8,13 @@ pub enum Type {
     Pointer(Box<Type>), // Pointer to some type (^Type)
     #[allow(dead_code)] // For future custom types
     Custom(String),
+    // Generic types like Array[T], Map[K, V]
+    Generic {
+        name: String,           // e.g., "Array", "Map"
+        type_params: Vec<Type>, // e.g., [Integer], [String, Integer]
+    },
+    // Type parameters like T, K, V
+    TypeParameter(String),
 }
 
 #[derive(Debug, Clone)]
@@ -47,6 +54,7 @@ pub enum Statement {
     #[allow(dead_code)] // For future struct definitions
     TypeDef {
         name: String,
+        type_params: Vec<String>, // Generic parameters like ["T", "K", "V"]
         fields: Vec<Field>,
     },
     If {

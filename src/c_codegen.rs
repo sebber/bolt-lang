@@ -579,6 +579,8 @@ impl CCodeGen {
                 Some(Type::Array(_)) => "int*", // For now, assume int arrays
                 Some(Type::Pointer(_)) => "int*", // For now, assume int pointers
                 Some(Type::Custom(_)) => "void*",
+                Some(Type::Generic { .. }) => "void*", // TODO: Implement generic return types
+                Some(Type::TypeParameter(_)) => "void*", // TODO: Implement type parameter return types
                 None => "void",
             };
             
@@ -596,6 +598,8 @@ impl CCodeGen {
                     Type::Array(_) => "int*", // For now, assume int arrays
                     Type::Pointer(_) => "int*", // For now, assume int pointers  
                     Type::Custom(_) => "void*",
+                    Type::Generic { .. } => "void*", // TODO: Implement generic type handling
+                    Type::TypeParameter(_) => "void*", // TODO: Implement type parameter handling
                 };
                 func_code.push_str(&format!("{} {}", param_type_str, param.name));
             }
@@ -614,6 +618,8 @@ impl CCodeGen {
                     Type::Array(_) => "array",
                     Type::Pointer(_) => "pointer",
                     Type::Custom(_) => "custom",
+                    Type::Generic { .. } => "generic", // TODO: Implement generic type handling
+                    Type::TypeParameter(_) => "typeparam", // TODO: Implement type parameter handling
                 };
                 temp_codegen.variables.insert(param.name.clone(), param_type_str.to_string());
             }
@@ -643,7 +649,7 @@ impl CCodeGen {
     }
 
     fn compile_type_definition(&mut self, statement: Statement, result: &mut String) {
-        if let Statement::TypeDef { name, fields } = statement {
+        if let Statement::TypeDef { name, type_params, fields } = statement {
             result.push_str(&format!("typedef struct {{\n"));
             
             for field in &fields {
@@ -653,7 +659,9 @@ impl CCodeGen {
                     Type::Bool => "int",
                     Type::Array(_) => "int*", // For now, assume int arrays
                     Type::Pointer(_) => "int*", // For now, assume int pointers
-                    Type::Custom(ref type_name) => type_name, // Reference to other custom type
+                    Type::Custom(ref type_name) => type_name,
+                    Type::Generic { .. } => "void*", // TODO: Generic field types
+                    Type::TypeParameter(_) => "void*", // TODO: Type parameter field types // Reference to other custom type
                 };
                 result.push_str(&format!("    {} {};\n", field_type_str, field.name));
             }

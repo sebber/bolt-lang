@@ -134,12 +134,38 @@ impl Parser {
     }
 
     fn parse_type_def(&mut self) -> Statement {
-        self.advance(); // consume 'def'
+        self.advance(); // consume 'type'
         
         let name = match &self.advance().token_type {
             TokenType::Identifier(name) => name.clone(),
-            _ => panic!("Expected identifier after 'def'"),
+            _ => panic!("Expected identifier after 'type'"),
         };
+
+        // Parse generic type parameters: type Name[T, K] = { ... }
+        let mut type_params = Vec::new();
+        if self.peek().token_type == TokenType::LeftBracket {
+            self.advance(); // consume '['
+            
+            while self.peek().token_type != TokenType::RightBracket && !self.is_at_end() {
+                match &self.advance().token_type {
+                    TokenType::Identifier(param_name) => {
+                        type_params.push(param_name.clone());
+                    }
+                    _ => panic!("Expected type parameter name"),
+                }
+                
+                if self.peek().token_type == TokenType::Comma {
+                    self.advance(); // consume ','
+                } else if self.peek().token_type != TokenType::RightBracket {
+                    panic!("Expected ',' or ']' in type parameter list");
+                }
+            }
+            
+            if self.peek().token_type != TokenType::RightBracket {
+                panic!("Expected ']' after type parameters");
+            }
+            self.advance(); // consume ']'
+        }
 
         if self.peek().token_type != TokenType::Equal {
             panic!("Expected '=' after type name");
@@ -187,7 +213,11 @@ impl Parser {
         }
         self.advance(); // consume '}'
 
-        Statement::TypeDef { name, fields }
+        Statement::TypeDef { 
+            name, 
+            type_params,
+            fields 
+        }
     }
 
     fn parse_type(&mut self) -> Type {
@@ -198,25 +228,45 @@ impl Parser {
             return Type::Pointer(Box::new(pointee_type));
         }
         
-        match &self.advance().token_type {
-            TokenType::Identifier(name) => match name.as_str() {
-                "String" => Type::String,
-                "Integer" => Type::Integer,
-                "Bool" => Type::Bool,
-                "Array" => {
-                    // Parse Array<Type> syntax
-                    if self.peek().token_type != TokenType::LeftBracket {
-                        panic!("Expected '[' after 'Array'");
+        let token = self.advance().clone();
+        match &token.token_type {
+            TokenType::Identifier(name) => {
+                match name.as_str() {
+                    "String" => Type::String,
+                    "Integer" => Type::Integer,
+                    "Bool" => Type::Bool,
+                    _ => {
+                        // Check if this is a generic type like Array[T] or Map[K, V]
+                        if self.peek().token_type == TokenType::LeftBracket {
+                            self.advance(); // consume '['
+                            
+                            let mut type_params = Vec::new();
+                            while self.peek().token_type != TokenType::RightBracket && !self.is_at_end() {
+                                let param_type = self.parse_type();
+                                type_params.push(param_type);
+                                
+                                if self.peek().token_type == TokenType::Comma {
+                                    self.advance(); // consume ','
+                                } else if self.peek().token_type != TokenType::RightBracket {
+                                    panic!("Expected ',' or ']' in generic type parameter list");
+                                }
+                            }
+                            
+                            if self.peek().token_type != TokenType::RightBracket {
+                                panic!("Expected ']' after generic type parameters");
+                            }
+                            self.advance(); // consume ']'
+                            
+                            Type::Generic {
+                                name: name.clone(),
+                                type_params,
+                            }
+                        } else {
+                            // Could be a custom type or a type parameter
+                            Type::Custom(name.clone())
+                        }
                     }
-                    self.advance(); // consume '['
-                    let element_type = self.parse_type();
-                    if self.peek().token_type != TokenType::RightBracket {
-                        panic!("Expected ']' after array element type");
-                    }
-                    self.advance(); // consume ']'
-                    Type::Array(Box::new(element_type))
                 }
-                _ => Type::Custom(name.clone()),
             },
             _ => panic!("Expected type name"),
         }
