@@ -15,7 +15,7 @@ impl<'a> ExpressionCompiler<'a> {
         match expression {
             Expression::IntegerLiteral(n) => n.to_string(),
             Expression::StringLiteral(s) => format!("\"{}\"", s),
-            Expression::BoolLiteral(b) => if b { "1" } else { "0" },
+            Expression::BoolLiteral(b) => if b { "1".to_string() } else { "0".to_string() },
             Expression::Identifier(name) => name,
             
             Expression::BinaryOp { left, operator, right } => {
@@ -43,9 +43,6 @@ impl<'a> ExpressionCompiler<'a> {
                 let operand_str = self.compile_to_string(*operand);
                 let op_str = match operator {
                     UnaryOperator::Not => "!",
-                    UnaryOperator::Minus => "-",
-                    UnaryOperator::AddressOf => "&",
-                    UnaryOperator::Dereference => "*",
                 };
                 format!("({}{})", op_str, operand_str)
             }
@@ -68,13 +65,13 @@ impl<'a> ExpressionCompiler<'a> {
                 format!("{}[{}]", array_str, index_str)
             }
             
-            Expression::StructLiteral { name, fields } => {
+            Expression::StructLiteral { type_name, fields, .. } => {
                 let field_assignments: Vec<String> = fields.into_iter()
-                    .map(|(field_name, field_value)| {
-                        format!(".{} = {}", field_name, self.compile_to_string(field_value))
+                    .map(|struct_field| {
+                        format!(".{} = {}", struct_field.name, self.compile_to_string(struct_field.value))
                     })
                     .collect();
-                format!("(({}) {{{}}})", name, field_assignments.join(", "))
+                format!("(({}) {{{}}})", type_name, field_assignments.join(", "))
             }
             
             _ => "0".to_string(), // Fallback for unhandled expression types

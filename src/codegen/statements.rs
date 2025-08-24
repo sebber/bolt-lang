@@ -86,16 +86,16 @@ impl<'a> StatementCompiler<'a> {
         let indent = format!("{}    ", base_indent);
         
         match statement {
-            Statement::VarDecl { name, var_type, value } => {
+            Statement::VarDecl { name, type_annotation, value } => {
                 let expr_compiler = ExpressionCompiler::new(self.variables);
                 let value_str = expr_compiler.compile_to_string(value.clone());
                 
-                if let Some(t) = var_type {
+                if let Some(t) = type_annotation {
                     let type_str = type_to_c_string(t);
                     self.variables.insert(name.to_string(), type_str.clone());
                     self.main_code.push_str(&format!("{}{} {} = {};\n", indent, type_str, name, value_str));
                 } else {
-                    let inferred_type = match value.as_ref() {
+                    let inferred_type = match value {
                         Expression::IntegerLiteral(_) => "int",
                         Expression::StringLiteral(_) => "char*", 
                         Expression::BoolLiteral(_) => "int",
@@ -106,10 +106,10 @@ impl<'a> StatementCompiler<'a> {
                 }
             }
             
-            Statement::ValDecl { name, var_type, value } => {
+            Statement::ValDecl { name, type_annotation, value } => {
                 self.compile_statement_with_indent(&Statement::VarDecl { 
                     name: name.clone(), 
-                    var_type: var_type.clone(), 
+                    type_annotation: type_annotation.clone(), 
                     value: value.clone() 
                 }, base_indent);
             }
@@ -137,7 +137,7 @@ impl<'a> StatementCompiler<'a> {
                 }
             }
             
-            Statement::Return { value } => {
+            Statement::Return(value) => {
                 if let Some(expr) = value {
                     let expr_compiler = ExpressionCompiler::new(self.variables);
                     let value_str = expr_compiler.compile_to_string(expr.clone());

@@ -101,13 +101,13 @@ pub fn substitute_type_params(generic_type: &Type, type_params: &[String], concr
         Type::Pointer(inner) => {
             Type::Pointer(Box::new(substitute_type_params(inner, type_params, concrete_types)))
         }
-        Type::Generic { name, type_args } => {
-            let substituted_args: Vec<Type> = type_args.iter()
+        Type::Generic { name, type_params: generic_params } => {
+            let substituted_args: Vec<Type> = generic_params.iter()
                 .map(|arg| substitute_type_params(arg, type_params, concrete_types))
                 .collect();
             Type::Generic {
                 name: name.clone(),
-                type_args: substituted_args,
+                type_params: substituted_args,
             }
         }
         Type::TypeParameter(param) => {

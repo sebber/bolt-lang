@@ -17,6 +17,7 @@ pub fn type_to_c_string(t: &Type) -> String {
             MonomorphicType::new(name.clone(), type_arg_names).mangled_name()
         }
         Type::TypeParameter(param) => param.clone(),
+        Type::Array(inner_type) => format!("{}*", type_to_c_string(inner_type)),
     }
 }
 
@@ -40,6 +41,7 @@ pub fn type_to_simple_name(t: &Type) -> String {
         }
         Type::Pointer(inner) => format!("Ptr_{}", type_to_simple_name(inner)),
         Type::TypeParameter(param) => param.clone(),
+        Type::Array(inner_type) => format!("Array_{}", type_to_simple_name(inner_type)),
     }
 }
 
@@ -51,5 +53,6 @@ pub fn get_c_type_default(t: &Type) -> String {
         Type::Pointer(_) => "NULL".to_string(),
         Type::Custom(_) | Type::Generic { .. } => "{}".to_string(),
         Type::TypeParameter(_) => "0".to_string(),
+        Type::Array(_) => "NULL".to_string(),
     }
 }
