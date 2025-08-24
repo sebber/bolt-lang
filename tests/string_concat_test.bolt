@@ -1,0 +1,23 @@
+// Test string concatenation with + operator
+import { print } from "bolt:stdio"
+
+fun main() {
+    // Basic string concatenation
+    val greeting := "Hello" + " World"
+    print(greeting)
+    
+    // Concatenation with variables
+    val first := "Bolt"
+    val second := " Language"
+    val combined := first + second
+    print(combined)
+    
+    // Chain concatenation
+    val message := "Welcome" + " to" + " Bolt!"
+    print(message)
+    
+    // Mixed literals and variables
+    val name := "Developer"
+    val welcome := "Hello " + name + "!"
+    print(welcome)
+}
