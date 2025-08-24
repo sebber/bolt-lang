@@ -41,6 +41,10 @@
         {
           "name": "constant.language.bolt",
           "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "storage.type.generic.bolt",
+          "match": "\\b[A-Z]\\b(?=\\s*[,\\]>}])"
         }
       ]
     },
@@ -79,11 +83,25 @@
         },
         {
           "name": "support.type.generic.bolt",
-          "match": "\\b(Array)\\b"
+          "match": "\\b(Array|Result|Box|Option)\\b"
+        },
+        {
+          "name": "keyword.operator.generic.bolt",
+          "begin": "\\[",
+          "end": "\\]",
+          "patterns": [
+            {
+              "include": "#types"
+            }
+          ]
         },
         {
           "name": "keyword.operator.pointer.bolt",
           "match": "\\^"
+        },
+        {
+          "name": "support.type.custom.bolt",
+          "match": "\\b[A-Z][a-zA-Z0-9_]*\\b"
         }
       ]
     },

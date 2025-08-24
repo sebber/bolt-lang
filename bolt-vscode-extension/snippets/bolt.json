@@ -1,0 +1,78 @@
+{
+  "Generic Type Definition": {
+    "prefix": "type",
+    "body": [
+      "type ${1:TypeName}[${2:T}] = {",
+      "    ${3:field}: ${2:T}${4:,}",
+      "    ${5:// Add more fields}",
+      "}"
+    ],
+    "description": "Define a generic type"
+  },
+  "Array Type": {
+    "prefix": "array",
+    "body": [
+      "type Array[${1:T}] = {",
+      "    data: ^${1:T},",
+      "    length: Integer,",
+      "    capacity: Integer",
+      "}"
+    ],
+    "description": "Define an Array[T] generic type"
+  },
+  "Result Type": {
+    "prefix": "result",
+    "body": [
+      "type Result[${1:T}] = {",
+      "    value: ${1:T},",
+      "    isError: Bool",
+      "}"
+    ],
+    "description": "Define a Result[T] generic type"
+  },
+  "Array Declaration": {
+    "prefix": "arr",
+    "body": [
+      "val ${1:name}: Array[${2:Integer}] = Array[${2:Integer}] {",
+      "    data: &${3:value},",
+      "    length: ${4:1},",
+      "    capacity: ${5:10}",
+      "}"
+    ],
+    "description": "Declare an Array[T] variable"
+  },
+  "For-in Loop": {
+    "prefix": "forin",
+    "body": [
+      "for ${1:item} in ${2:array} {",
+      "    ${3:// Process item}",
+      "    print(${1:item})",
+      "}"
+    ],
+    "description": "For-in loop over an array"
+  },
+  "Function with Generic": {
+    "prefix": "fungeneic",
+    "body": [
+      "fun ${1:functionName}[${2:T}](${3:param}: ${2:T}): ${4:${2:T}} {",
+      "    ${5:// Function body}",
+      "    return ${3:param}",
+      "}"
+    ],
+    "description": "Define a generic function"
+  },
+  "Import Statement": {
+    "prefix": "import",
+    "body": [
+      "import { ${1:function} } from \"${2:bolt:stdio}\""
+    ],
+    "description": "Import statement"
+  },
+  "Print Statement": {
+    "prefix": "print",
+    "body": [
+      "print(${1:\"message\"})"
+    ],
+    "description": "Print statement"
+  }
+}

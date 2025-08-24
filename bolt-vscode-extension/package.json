@@ -1,8 +1,8 @@
 {
   "name": "bolt-language",
   "displayName": "Bolt Language",
-  "description": "Syntax highlighting and IntelliSense for the Bolt programming language",
-  "version": "0.2.0",
+  "description": "Syntax highlighting and IntelliSense for the Bolt programming language with generic types support",
+  "version": "0.3.0",
   "publisher": "bolt-lang",
   "engines": {
     "vscode": "^1.60.0"
@@ -10,6 +10,19 @@
   "categories": [
     "Programming Languages"
   ],
+  "keywords": [
+    "bolt",
+    "language",
+    "generic types",
+    "arrays",
+    "typescript-inspired",
+    "compiled",
+    "systems programming"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/boltlang.git"
+  },
   "main": "./src/extension.js",
   "activationEvents": [
     "onLanguage:bolt"
@@ -43,6 +56,12 @@
         "command": "bolt.showLSPOutput",
         "title": "Show Bolt LSP Output",
         "category": "Bolt"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "bolt",
+        "path": "./snippets/bolt.json"
       }
     ]
   }

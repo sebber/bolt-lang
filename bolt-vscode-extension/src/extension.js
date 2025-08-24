@@ -63,7 +63,11 @@ function activate(context) {
         },
         outputChannelName: 'Bolt Language Server',
         revealOutputChannelOn: 4, // Never automatically reveal
-        initializationOptions: {},
+        initializationOptions: {
+            supportsGenericTypes: true,
+            supportedFeatures: ['hover', 'completion', 'diagnostics'],
+            version: "0.3.0"
+        },
         middleware: {
             // Custom error handling
             handleDiagnostics: (uri, diagnostics, next) => {
