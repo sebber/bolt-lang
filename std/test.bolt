@@ -1,0 +1,100 @@
+import { print } from "bolt:stdio"
+
+var totalTests := 0
+var passedTests := 0
+var failedTests := 0
+
+/** Basic assertion function that checks if a condition is true */
+export fun assert(condition: Bool) {
+    totalTests = totalTests + 1
+    
+    if (condition) {
+        passedTests = passedTests + 1
+        print("✅ PASS")
+    } else {
+        failedTests = failedTests + 1
+        print("❌ FAIL: Assertion failed")
+    }
+}
+
+/** Asserts that two integers are equal */
+export fun assertIntEquals(actual: Integer, expected: Integer) {
+    totalTests = totalTests + 1
+    
+    if (actual == expected) {
+        passedTests = passedTests + 1
+        print("✅ PASS")
+    } else {
+        failedTests = failedTests + 1
+        print("❌ FAIL: Expected vs Actual:")
+        print(expected)
+        print(actual)
+    }
+}
+
+/** Asserts that two strings are equal */
+export fun assertStringEquals(actual: String, expected: String) {
+    totalTests = totalTests + 1
+    
+    if (actual == expected) {
+        passedTests = passedTests + 1
+        print("✅ PASS")
+    } else {
+        failedTests = failedTests + 1
+        print("❌ FAIL: String mismatch")
+        print("Expected: " + expected)
+        print("Actual: " + actual)
+    }
+}
+
+/** Asserts that a condition is true */
+export fun assertTrue(condition: Bool) {
+    totalTests = totalTests + 1
+    
+    if (condition) {
+        passedTests = passedTests + 1
+        print("✅ PASS")
+    } else {
+        failedTests = failedTests + 1
+        print("❌ FAIL: Expected true")
+    }
+}
+
+/** Asserts that a condition is false */
+export fun assertFalse(condition: Bool) {
+    totalTests = totalTests + 1
+    
+    if (condition) {
+        failedTests = failedTests + 1
+        print("❌ FAIL: Expected false")
+    } else {
+        passedTests = passedTests + 1
+        print("✅ PASS")
+    }
+}
+
+/** Prints a summary of all test results */
+export fun printTestSummary() {
+    print("")
+    print("=== TEST SUMMARY ===")
+    print("Total tests: ")
+    print(totalTests)
+    print("Passed: ")
+    print(passedTests)
+    print("Failed: ")
+    print(failedTests)
+    
+    if (failedTests == 0) {
+        print("🎉 All tests passed!")
+    } else {
+        print("💥 Some tests failed!")
+    }
+    print("====================")
+}
+
+/** Prints a test section header */
+export fun testSection(name: String) {
+    print("")
+    print("🧪 Testing: " + name)
+    print("---")
+}

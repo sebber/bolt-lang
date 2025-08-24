@@ -170,7 +170,16 @@ impl Lexer {
             }
             '/' => {
                 self.advance();
-                TokenType::Slash
+                // Check for comments
+                if !self.is_at_end() && self.current_char() == '*' {
+                    // Handle /* */ comments
+                    self.advance(); // Skip the '*'
+                    self.skip_block_comment();
+                    // Recursively get the next token after skipping the comment
+                    return self.next_token();
+                } else {
+                    TokenType::Slash
+                }
             }
             '%' => {
                 self.advance();
@@ -325,6 +334,27 @@ impl Lexer {
                 _ => break,
             }
         }
+    }
+
+    fn skip_block_comment(&mut self) {
+        // We've already consumed /* so we need to find the closing */
+        while !self.is_at_end() {
+            if self.current_char() == '*' {
+                self.advance();
+                if !self.is_at_end() && self.current_char() == '/' {
+                    self.advance(); // Skip the closing '/'
+                    return;
+                }
+            } else if self.current_char() == '\n' {
+                self.line += 1;
+                self.advance();
+            } else {
+                self.advance();
+            }
+        }
+        
+        // If we reach here, we hit EOF without finding closing */
+        // This could be handled as an error in the future
     }
 
     fn current_char(&self) -> char {

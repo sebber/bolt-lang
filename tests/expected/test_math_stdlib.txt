@@ -1,0 +1,11 @@
+🧪 Testing: math.max
+✅ math.max(5, 3) = 5
+✅ math.max(3, 5) = 5
+🧪 Testing: math.min
+✅ math.min(5, 3) = 3
+✅ math.min(3, 5) = 3
+🧪 Testing: math.abs
+✅ math.abs(5) = 5
+✅ math.abs(0) = 0
+✅ math.abs(-5) = 5
+All math stdlib tests completed!

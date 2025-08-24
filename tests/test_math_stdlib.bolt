@@ -1,0 +1,57 @@
+import math from "bolt:math"
+import { print } from "bolt:stdio"
+
+print("🧪 Testing: math.max")
+val maxResult1 := math.max(5, 3)
+if (maxResult1 == 5) {
+    print("✅ math.max(5, 3) = 5")
+} else {
+    print("❌ math.max(5, 3) failed")
+}
+
+val maxResult2 := math.max(3, 5)
+if (maxResult2 == 5) {
+    print("✅ math.max(3, 5) = 5")
+} else {
+    print("❌ math.max(3, 5) failed")
+}
+
+print("🧪 Testing: math.min")
+val minResult1 := math.min(5, 3)
+if (minResult1 == 3) {
+    print("✅ math.min(5, 3) = 3")
+} else {
+    print("❌ math.min(5, 3) failed")
+}
+
+val minResult2 := math.min(3, 5)
+if (minResult2 == 3) {
+    print("✅ math.min(3, 5) = 3")
+} else {
+    print("❌ math.min(3, 5) failed")
+}
+
+print("🧪 Testing: math.abs")
+val absResult1 := math.abs(5)
+if (absResult1 == 5) {
+    print("✅ math.abs(5) = 5")
+} else {
+    print("❌ math.abs(5) failed")
+}
+
+val absResult2 := math.abs(0)
+if (absResult2 == 0) {
+    print("✅ math.abs(0) = 0")
+} else {
+    print("❌ math.abs(0) failed")
+}
+
+val negFive := 0 - 5
+val absResult3 := math.abs(negFive)
+if (absResult3 == 5) {
+    print("✅ math.abs(-5) = 5")
+} else {
+    print("❌ math.abs(-5) failed")
+}
+
+print("All math stdlib tests completed!")

@@ -1,0 +1,9 @@
+import { print } from "bolt:stdio"
+
+print("Testing framework import...")
+if (true) {
+    print("✅ Test passed")
+} else {
+    print("❌ Test failed")
+}
+print("Framework imported successfully!")

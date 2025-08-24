@@ -1,0 +1,67 @@
+import math from "bolt:math"
+import { print } from "bolt:stdio"
+
+print("=== Math Standard Library Tests ===")
+
+print("Testing math.max...")
+val maxResult1 := math.max(5, 3)
+if (maxResult1 == 5) {
+    print("✅ math.max(5, 3) = 5")
+} else {
+    print("❌ math.max(5, 3) failed")
+}
+
+val maxResult2 := math.max(3, 5)
+if (maxResult2 == 5) {
+    print("✅ math.max(3, 5) = 5") 
+} else {
+    print("❌ math.max(3, 5) failed")
+}
+
+print("Testing math.min...")
+val minResult1 := math.min(5, 3)
+if (minResult1 == 3) {
+    print("✅ math.min(5, 3) = 3")
+} else {
+    print("❌ math.min(5, 3) failed")
+}
+
+val minResult2 := math.min(3, 5)
+if (minResult2 == 3) {
+    print("✅ math.min(3, 5) = 3")
+} else {
+    print("❌ math.min(3, 5) failed")
+}
+
+print("Testing math.abs...")
+val absResult1 := math.abs(5)
+if (absResult1 == 5) {
+    print("✅ math.abs(5) = 5")
+} else {
+    print("❌ math.abs(5) failed")
+}
+
+val negFive := 0 - 5
+val absResult2 := math.abs(negFive)
+if (absResult2 == 5) {
+    print("✅ math.abs(-5) = 5")
+} else {
+    print("❌ math.abs(-5) failed")
+}
+
+val absZero := math.abs(0)
+if (absZero == 0) {
+    print("✅ math.abs(0) = 0")
+} else {
+    print("❌ math.abs(0) failed")
+}
+
+print("Testing combined operations...")
+val combined1 := math.max(math.abs(negFive), 3)
+if (combined1 == 5) {
+    print("✅ math.max(math.abs(-5), 3) = 5")
+} else {
+    print("❌ Combined operation failed")
+}
+
+print("=== Math Tests Complete ===")

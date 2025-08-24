@@ -1,0 +1,18 @@
+import math from "bolt:math"
+import { print } from "bolt:stdio"
+
+val result := math.max(5, 3)
+if (result == 5) {
+    print("✅ math.max test passed")
+} else {
+    print("❌ math.max test failed")
+}
+
+val absResult := math.abs(0 - 7)
+if (absResult == 7) {
+    print("✅ math.abs test passed")
+} else {
+    print("❌ math.abs test failed")
+}
+
+print("Test complete")

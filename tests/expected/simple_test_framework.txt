@@ -1,0 +1,3 @@
+✅ math.max test passed
+✅ math.abs test passed
+Test complete
