@@ -3,6 +3,7 @@ mod parser;
 mod ast;
 mod c_codegen;
 mod module;
+mod error;
 
 use std::fs;
 use std::process::Command;
@@ -12,8 +13,16 @@ use lexer::Lexer;
 use parser::Parser;
 use c_codegen::CCodeGen;
 use module::ModuleSystem;
+use error::CompileError;
 
 fn main() {
+    if let Err(e) = run() {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
+}
+
+fn run() -> Result<(), CompileError> {
     let matches = ClapCommand::new("bolt")
         .version("0.1.0")
         .about("Bolt programming language compiler")
@@ -43,42 +52,30 @@ fn main() {
     
     // Create output directory if it doesn't exist
     fs::create_dir_all(&output_dir)
-        .unwrap_or_else(|_| panic!("Could not create output directory: {}", output_dir));
+        .map_err(|e| CompileError::IoError(e))?;
     
     let full_output_path = format!("{}/{}", output_dir, output_file);
 
     // Read the source file
     let source = fs::read_to_string(input_file)
-        .unwrap_or_else(|_| panic!("Could not read file: {}", input_file));
+        .map_err(|e| CompileError::IoError(e))?;
 
     // Initialize module system
     let mut module_system = ModuleSystem::new();
 
     // Lexical analysis
     let mut lexer = Lexer::new(source);
-    let tokens = match lexer.tokenize() {
-        Ok(tokens) => tokens,
-        Err(e) => {
-            eprintln!("Lexer error: {}", e);
-            std::process::exit(1);
-        }
-    };
+    let tokens = lexer.tokenize()
+        .map_err(|e| CompileError::CodegenError(format!("Lexer error: {}", e)))?;
     
     // Parsing
     let mut parser = Parser::new(tokens);
-    let ast = match parser.parse() {
-        Ok(ast) => ast,
-        Err(e) => {
-            eprintln!("Parser error: {}", e);
-            std::process::exit(1);
-        }
-    };
+    let ast = parser.parse()
+        .map_err(|e| CompileError::CodegenError(format!("Parser error: {}", e)))?;
     
     // Resolve imports and load modules
-    if let Err(e) = module_system.resolve_imports(&ast) {
-        eprintln!("Module resolution error: {}", e);
-        std::process::exit(1);
-    }
+    module_system.resolve_imports(&ast)
+        .map_err(|e| CompileError::CodegenError(format!("Module resolution error: {}", e)))?;
     
     // Code generation with module support
     let mut codegen = CCodeGen::new();
@@ -93,7 +90,7 @@ fn main() {
     // Write C file to output directory
     let c_file = format!("{}/{}.c", output_dir, output_file);
     fs::write(&c_file, c_code)
-        .expect("Failed to write C file");
+        .map_err(|e| CompileError::IoError(e))?;
     
     // Compile with GCC (with optimizations in release mode)
     let mut gcc_command = Command::new("gcc");
@@ -106,10 +103,10 @@ fn main() {
     }
     
     let status = gcc_command.status()
-        .expect("Failed to compile with GCC");
+        .map_err(|e| CompileError::IoError(e))?;
     
     if !status.success() {
-        panic!("Compilation failed");
+        return Err(CompileError::CodegenError("GCC compilation failed".to_string()));
     }
     
     // Clean up C file (only in release mode to keep debug artifacts)
@@ -118,4 +115,6 @@ fn main() {
     }
     
     println!("Successfully compiled {} to {} ({})", input_file, full_output_path, build_mode);
+    
+    Ok(())
 }
