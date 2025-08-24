@@ -75,15 +75,17 @@ impl CCodeGen {
     ) {
         self.generic_types.insert(name, (type_params, fields));
     }
-    
+
     // Helper function to check if an expression represents a string
     fn is_string_expression(&self, expr: &Expression) -> bool {
         match expr {
             Expression::StringLiteral(_) => true,
             Expression::Identifier(name) => {
                 // Check if the variable is known to be a string type
-                self.variables.get(name).map_or(false, |t| t == "string" || t == "char*")
-            },
+                self.variables
+                    .get(name)
+                    .map_or(false, |t| t == "string" || t == "char*")
+            }
             _ => false, // For now, only handle literals and variables
         }
     }
@@ -354,7 +356,7 @@ impl CCodeGen {
         result.push_str("#include <stdio.h>\n");
         result.push_str("#include <string.h>\n");
         result.push_str("#include <stdlib.h>\n\n");
-        
+
         // Helper function for string concatenation
         result.push_str("char* string_concat(const char* str1, const char* str2) {\n");
         result.push_str("    size_t len1 = strlen(str1);\n");
@@ -432,7 +434,7 @@ impl CCodeGen {
         result.push_str("#include <stdio.h>\n");
         result.push_str("#include <string.h>\n");
         result.push_str("#include <stdlib.h>\n\n");
-        
+
         // Helper function for string concatenation
         result.push_str("char* string_concat(const char* str1, const char* str2) {\n");
         result.push_str("    size_t len1 = strlen(str1);\n");
@@ -589,12 +591,17 @@ impl CCodeGen {
                         self.main_code.push_str("};\n");
                         self.variables.insert(name, "array".to_string());
                     }
-                    Expression::BinaryOp { operator, left, right } => {
+                    Expression::BinaryOp {
+                        operator,
+                        left,
+                        right,
+                    } => {
                         let expr_str = self.compile_expression_to_string(value.clone());
-                        
+
                         // Determine the result type and C type
-                        let (c_type, var_type) = if *operator == BinaryOperator::Add && 
-                           (self.is_string_expression(left) || self.is_string_expression(right)) {
+                        let (c_type, var_type) = if *operator == BinaryOperator::Add
+                            && (self.is_string_expression(left) || self.is_string_expression(right))
+                        {
                             ("char*", "string")
                         } else {
                             match operator {
@@ -609,7 +616,7 @@ impl CCodeGen {
                                 _ => ("int", "int"),
                             }
                         };
-                        
+
                         self.main_code
                             .push_str(&format!("    {} {} = {};\n", c_type, name, expr_str));
                         self.variables.insert(name, var_type.to_string());
@@ -740,12 +747,17 @@ impl CCodeGen {
                         self.main_code.push_str("};\n");
                         self.variables.insert(name, "array".to_string());
                     }
-                    Expression::BinaryOp { operator, left, right } => {
+                    Expression::BinaryOp {
+                        operator,
+                        left,
+                        right,
+                    } => {
                         let expr_str = self.compile_expression_to_string(value.clone());
-                        
+
                         // Determine the result type and C type
-                        let (c_type, var_type) = if *operator == BinaryOperator::Add && 
-                           (self.is_string_expression(left) || self.is_string_expression(right)) {
+                        let (c_type, var_type) = if *operator == BinaryOperator::Add
+                            && (self.is_string_expression(left) || self.is_string_expression(right))
+                        {
                             ("char*", "string")
                         } else {
                             match operator {
@@ -760,7 +772,7 @@ impl CCodeGen {
                                 _ => ("int", "int"),
                             }
                         };
-                        
+
                         self.main_code
                             .push_str(&format!("    {} {} = {};\n", c_type, name, expr_str));
                         self.variables.insert(name, var_type.to_string());
@@ -1271,7 +1283,7 @@ impl CCodeGen {
             if name == "print" || name == "println" {
                 return;
             }
-            
+
             // Check if this is a user-defined main function
             if name == "main" {
                 self.has_user_main = true;
@@ -1564,14 +1576,15 @@ impl CCodeGen {
             } => {
                 let left_str = self.compile_expression_to_string(*left.clone());
                 let right_str = self.compile_expression_to_string(*right.clone());
-                
+
                 // Check for string concatenation
-                if operator == BinaryOperator::Add && 
-                   (self.is_string_expression(&left) || self.is_string_expression(&right)) {
+                if operator == BinaryOperator::Add
+                    && (self.is_string_expression(&left) || self.is_string_expression(&right))
+                {
                     // Generate string concatenation call
                     return format!("string_concat({}, {})", left_str, right_str);
                 }
-                
+
                 let op_str = match operator {
                     BinaryOperator::Add => "+",
                     BinaryOperator::Subtract => "-",

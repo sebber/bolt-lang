@@ -1,7 +1,7 @@
-pub mod monomorphization;
-pub mod types;
 pub mod expressions;
+pub mod monomorphization;
 pub mod statements;
+pub mod types;
 
 // Re-export commonly used types
 // Note: These are available for when c_codegen.rs is refactored to use them

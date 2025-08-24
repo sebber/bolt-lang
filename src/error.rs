@@ -37,7 +37,11 @@ pub enum ParseError {
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ParseError::UnexpectedToken { expected, found, location } => {
+            ParseError::UnexpectedToken {
+                expected,
+                found,
+                location,
+            } => {
                 if let Some(loc) = location {
                     write!(f, "{}: Expected {}, found {}", loc, expected, found)
                 } else {
@@ -93,7 +97,10 @@ pub enum LexError {
 impl fmt::Display for LexError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            LexError::UnexpectedCharacter { character, location } => {
+            LexError::UnexpectedCharacter {
+                character,
+                location,
+            } => {
                 write!(f, "{}: Unexpected character '{}'", location, character)
             }
             LexError::UnterminatedString { location } => {
@@ -163,7 +170,10 @@ mod tests {
 
     #[test]
     fn test_source_location_display() {
-        let loc = SourceLocation { line: 10, column: 5 };
+        let loc = SourceLocation {
+            line: 10,
+            column: 5,
+        };
         assert_eq!(format!("{}", loc), "10:5");
     }
 
@@ -172,7 +182,10 @@ mod tests {
         let error = ParseError::UnexpectedToken {
             expected: "identifier".to_string(),
             found: "number".to_string(),
-            location: Some(SourceLocation { line: 5, column: 10 }),
+            location: Some(SourceLocation {
+                line: 5,
+                column: 10,
+            }),
         };
         let display = format!("{}", error);
         assert!(display.contains("5:10"));
@@ -199,7 +212,7 @@ mod tests {
         };
         let display = format!("{}", error);
         assert!(display.contains("2:3"));
-        assert!(display.contains("@"));
+        assert!(display.contains('@'));
         assert!(display.contains("Unexpected character"));
     }
 
@@ -211,7 +224,7 @@ mod tests {
         };
         let compile_error = CompileError::from(parse_error);
         match compile_error {
-            CompileError::ParseError(_) => {},
+            CompileError::ParseError(_) => {}
             _ => panic!("Expected ParseError variant"),
         }
     }
@@ -221,7 +234,7 @@ mod tests {
         let io_error = IoError::new(ErrorKind::NotFound, "File not found");
         let compile_error = CompileError::from(io_error);
         match compile_error {
-            CompileError::IoError(_) => {},
+            CompileError::IoError(_) => {}
             _ => panic!("Expected IoError variant"),
         }
     }
@@ -240,7 +253,7 @@ mod tests {
             feature: "async functions".to_string(),
             location: None,
         };
-        
+
         // Test that it implements std::error::Error
         let _: &dyn std::error::Error = &parse_error;
     }

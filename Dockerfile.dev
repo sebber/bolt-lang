@@ -1,0 +1,53 @@
+# Dockerfile for Bolt Language Development Environment
+# Provides a consistent development environment across machines
+
+FROM rust:1.75-bookworm
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    build-essential \
+    pkg-config \
+    curl \
+    git \
+    vim \
+    inotify-tools \
+    valgrind \
+    perf-tools-unstable \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js for VS Code extension development
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+
+# Install Rust components and tools
+RUN rustup component add rustfmt clippy \
+    && cargo install cargo-watch cargo-audit cargo-outdated just
+
+# Create development user
+RUN useradd -m -s /bin/bash dev \
+    && usermod -aG sudo dev \
+    && echo 'dev ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+USER dev
+WORKDIR /workspace
+
+# Setup shell environment
+RUN echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc \
+    && echo 'alias ll="ls -la"' >> ~/.bashrc \
+    && echo 'alias bolt-check="./dev.sh check"' >> ~/.bashrc \
+    && echo 'alias bolt-test="./dev.sh test"' >> ~/.bashrc \
+    && echo 'alias j="just"' >> ~/.bashrc
+
+# Copy source code (in actual development, this would be a volume mount)
+COPY --chown=dev:dev . .
+
+# Make scripts executable
+RUN chmod +x dev.sh run_tests.sh run_examples.sh setup-dev.sh build.sh 2>/dev/null || true
+
+# Initial build
+RUN cargo build
+
+EXPOSE 3000 8080
+
+CMD ["/bin/bash"]

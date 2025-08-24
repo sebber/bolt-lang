@@ -1,5 +1,5 @@
-use crate::ast::Type;
 use super::monomorphization::MonomorphicType;
+use crate::ast::Type;
 
 /// Convert an AST Type to its C equivalent string representation
 pub fn type_to_c_string(t: &Type) -> String {
@@ -11,9 +11,7 @@ pub fn type_to_c_string(t: &Type) -> String {
         Type::Custom(name) => name.clone(),
         Type::Generic { name, type_params } => {
             // Generate monomorphic type name
-            let type_arg_names: Vec<String> = type_params.iter()
-                .map(|t| type_to_simple_name(t))
-                .collect();
+            let type_arg_names: Vec<String> = type_params.iter().map(type_to_simple_name).collect();
             MonomorphicType::new(name.clone(), type_arg_names).mangled_name()
         }
         Type::TypeParameter(param) => param.clone(),
@@ -32,8 +30,9 @@ pub fn type_to_simple_name(t: &Type) -> String {
             if type_params.is_empty() {
                 name.clone()
             } else {
-                let args = type_params.iter()
-                    .map(|t| type_to_simple_name(t))
+                let args = type_params
+                    .iter()
+                    .map(type_to_simple_name)
                     .collect::<Vec<_>>()
                     .join("_");
                 format!("{}_{}", name, args)
@@ -70,7 +69,10 @@ mod tests {
 
     #[test]
     fn test_custom_type_to_c_string() {
-        assert_eq!(type_to_c_string(&Type::Custom("MyType".to_string())), "MyType");
+        assert_eq!(
+            type_to_c_string(&Type::Custom("MyType".to_string())),
+            "MyType"
+        );
     }
 
     #[test]
@@ -78,7 +80,7 @@ mod tests {
         let inner = Type::Integer;
         let pointer = Type::Pointer(Box::new(inner));
         assert_eq!(type_to_c_string(&pointer), "int*");
-        
+
         // Nested pointer
         let double_pointer = Type::Pointer(Box::new(pointer));
         assert_eq!(type_to_c_string(&double_pointer), "int**");
@@ -139,8 +141,14 @@ mod tests {
         assert_eq!(get_c_type_default(&Type::Integer), "0");
         assert_eq!(get_c_type_default(&Type::Bool), "0");
         assert_eq!(get_c_type_default(&Type::String), r#""""#);
-        assert_eq!(get_c_type_default(&Type::Pointer(Box::new(Type::Integer))), "NULL");
-        assert_eq!(get_c_type_default(&Type::Array(Box::new(Type::Integer))), "NULL");
+        assert_eq!(
+            get_c_type_default(&Type::Pointer(Box::new(Type::Integer))),
+            "NULL"
+        );
+        assert_eq!(
+            get_c_type_default(&Type::Array(Box::new(Type::Integer))),
+            "NULL"
+        );
         assert_eq!(get_c_type_default(&Type::Custom("Foo".to_string())), "{}");
     }
 }

@@ -1,8 +1,8 @@
-use std::collections::HashMap;
-use std::fs;
 use crate::ast::{Program, Statement};
 use crate::lexer::Lexer;
 use crate::parser::Parser;
+use std::collections::HashMap;
+use std::fs;
 
 #[derive(Debug, Clone)]
 pub struct ModuleExports {
@@ -54,7 +54,7 @@ impl ModuleSystem {
 
         // Extract exports from the module
         let exports = self.extract_exports(&program);
-        
+
         // Store the module and its exports
         self.modules.insert(module_path.to_string(), program);
         self.exports.insert(module_path.to_string(), exports);
@@ -85,10 +85,15 @@ impl ModuleSystem {
 
     pub fn resolve_imports(&mut self, main_program: &Program) -> Result<(), String> {
         for statement in &main_program.statements {
-            if let Statement::Import { module_name, module_path, items } = statement {
+            if let Statement::Import {
+                module_name,
+                module_path,
+                items,
+            } = statement
+            {
                 // Load the module if not already loaded
                 self.load_module(module_path)?;
-                
+
                 // Resolve the import
                 let imported_items = if let Some(specific_items) = items {
                     // Selective import: import { item1, item2 } from "path"
@@ -96,9 +101,11 @@ impl ModuleSystem {
                 } else {
                     // Namespace import: import module from "path"
                     // For now, we'll still import all items but we need to handle namespacing
-                    let exports = self.exports.get(module_path)
+                    let exports = self
+                        .exports
+                        .get(module_path)
                         .ok_or_else(|| format!("Module '{}' not found", module_path))?;
-                    
+
                     let mut all_items = Vec::new();
                     all_items.extend(exports.functions.iter().cloned());
                     all_items.extend(exports.types.iter().cloned());

@@ -1,13 +1,13 @@
-use std::io::{self, BufRead, BufReader, Write, Read};
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::io::{self, BufRead, BufReader, Read, Write};
 
+mod ast;
+mod error;
 mod lexer;
 mod parser;
-mod ast;
 mod symbol_table;
-mod error;
 
 use lexer::Lexer;
 use parser::Parser;
@@ -41,7 +41,7 @@ impl LspServer {
     fn run(&mut self) {
         let stdin = io::stdin();
         let mut reader = BufReader::new(stdin.lock());
-        
+
         loop {
             // Read LSP headers
             let mut headers = HashMap::new();
@@ -50,19 +50,19 @@ impl LspServer {
                 if reader.read_line(&mut line).unwrap() == 0 {
                     return; // EOF
                 }
-                
+
                 let line = line.trim();
                 if line.is_empty() {
                     break; // End of headers
                 }
-                
+
                 if let Some(colon_pos) = line.find(':') {
                     let key = line[..colon_pos].trim().to_lowercase();
                     let value = line[colon_pos + 1..].trim();
                     headers.insert(key, value.to_string());
                 }
             }
-            
+
             // Read content using the buffered reader directly
             if let Some(content_length) = headers.get("content-length") {
                 if let Ok(length) = content_length.parse::<usize>() {
@@ -72,24 +72,37 @@ impl LspServer {
                             if let Ok(content_str) = String::from_utf8(content) {
                                 eprintln!("LSP: Processing message of length: {}", length);
                                 eprintln!("LSP: Raw content: '{}'", content_str);
-                                
+
                                 // The content should already be pure JSON at this point
                                 let trimmed = content_str.trim();
                                 match serde_json::from_str::<Value>(trimmed) {
                                     Ok(json_value) => {
                                         // Try to parse as our Message struct
-                                        match serde_json::from_value::<Message>(json_value.clone()) {
+                                        match serde_json::from_value::<Message>(json_value.clone())
+                                        {
                                             Ok(msg) => {
                                                 if let Some(method) = &msg.method {
-                                                    eprintln!("LSP: Successfully parsed method: {}", method);
+                                                    eprintln!(
+                                                        "LSP: Successfully parsed method: {}",
+                                                        method
+                                                    );
                                                 }
                                                 self.handle_message(msg);
                                             }
                                             Err(e) => {
-                                                eprintln!("LSP: Failed to convert to Message struct: {}", e);
+                                                eprintln!(
+                                                    "LSP: Failed to convert to Message struct: {}",
+                                                    e
+                                                );
                                                 // Handle as raw JSON
-                                                if let Some(method) = json_value.get("method").and_then(|m| m.as_str()) {
-                                                    eprintln!("LSP: Handling raw JSON method: {}", method);
+                                                if let Some(method) = json_value
+                                                    .get("method")
+                                                    .and_then(|m| m.as_str())
+                                                {
+                                                    eprintln!(
+                                                        "LSP: Handling raw JSON method: {}",
+                                                        method
+                                                    );
                                                     self.handle_raw_message(json_value);
                                                 }
                                             }
@@ -98,7 +111,7 @@ impl LspServer {
                                     Err(e) => {
                                         eprintln!("LSP: Failed to parse JSON: {}", e);
                                         eprintln!("LSP: Content: '{}'", trimmed);
-                                        
+
                                         // Check if this looks like it has headers mixed in
                                         if trimmed.contains("Content-Length:") {
                                             eprintln!("LSP: ERROR - Headers found in JSON content! Buffer issue detected.");
@@ -120,14 +133,26 @@ impl LspServer {
         if let Some(method) = json_value.get("method").and_then(|m| m.as_str()) {
             let id = json_value.get("id");
             let params = json_value.get("params");
-            
+
             match method {
                 "textDocument/didOpen" => {
                     eprintln!("LSP: Handling didOpen from raw JSON");
                     if let Some(params) = params {
-                        if let Some(uri) = params.get("textDocument").and_then(|doc| doc.get("uri")).and_then(|u| u.as_str()) {
-                            if let Some(text) = params.get("textDocument").and_then(|doc| doc.get("text")).and_then(|t| t.as_str()) {
-                                if let Some(lang_id) = params.get("textDocument").and_then(|doc| doc.get("languageId")).and_then(|l| l.as_str()) {
+                        if let Some(uri) = params
+                            .get("textDocument")
+                            .and_then(|doc| doc.get("uri"))
+                            .and_then(|u| u.as_str())
+                        {
+                            if let Some(text) = params
+                                .get("textDocument")
+                                .and_then(|doc| doc.get("text"))
+                                .and_then(|t| t.as_str())
+                            {
+                                if let Some(lang_id) = params
+                                    .get("textDocument")
+                                    .and_then(|doc| doc.get("languageId"))
+                                    .and_then(|l| l.as_str())
+                                {
                                     eprintln!("LSP: Raw didOpen - {} (language: {})", uri, lang_id);
                                 }
                                 self.documents.insert(uri.to_string(), text.to_string());
@@ -140,13 +165,23 @@ impl LspServer {
                 "textDocument/hover" => {
                     eprintln!("LSP: Handling hover from raw JSON");
                     if let Some(id_val) = id {
-                        if let Some(uri) = params.and_then(|p| p.get("textDocument")).and_then(|doc| doc.get("uri")).and_then(|u| u.as_str()) {
+                        if let Some(uri) = params
+                            .and_then(|p| p.get("textDocument"))
+                            .and_then(|doc| doc.get("uri"))
+                            .and_then(|u| u.as_str())
+                        {
                             if let Some(position) = params.and_then(|p| p.get("position")) {
                                 if let Some(line) = position.get("line").and_then(|l| l.as_u64()) {
-                                    if let Some(character) = position.get("character").and_then(|c| c.as_u64()) {
+                                    if let Some(character) =
+                                        position.get("character").and_then(|c| c.as_u64())
+                                    {
                                         eprintln!("LSP: Raw hover at {}:{}", line, character);
                                         if let Some(doc) = self.documents.get(uri) {
-                                            let hover_info = self.get_hover_info(doc, line as usize, character as usize);
+                                            let hover_info = self.get_hover_info(
+                                                doc,
+                                                line as usize,
+                                                character as usize,
+                                            );
                                             let response = Message {
                                                 jsonrpc: "2.0".to_string(),
                                                 id: Some(id_val.clone()),
@@ -160,7 +195,10 @@ impl LspServer {
                                                 })),
                                                 error: None,
                                             };
-                                            eprintln!("LSP: Sending raw hover response: {}", hover_info);
+                                            eprintln!(
+                                                "LSP: Sending raw hover response: {}",
+                                                hover_info
+                                            );
                                             self.send_message(response);
                                             return;
                                         }
@@ -168,7 +206,7 @@ impl LspServer {
                                 }
                             }
                         }
-                        
+
                         // Fallback response
                         let response = Message {
                             jsonrpc: "2.0".to_string(),
@@ -191,13 +229,12 @@ impl LspServer {
                             json!({"label": "fun", "kind": 14, "detail": "Function", "insertText": "fun "}),
                             json!({"label": "type", "kind": 14, "detail": "Type definition", "insertText": "type "}),
                             json!({"label": "print", "kind": 3, "detail": "Print function", "insertText": "print("}),
-                            
                             // Generic types
                             json!({"label": "Array[Integer]", "kind": 7, "detail": "Integer array", "insertText": "Array[Integer]"}),
                             json!({"label": "Array[String]", "kind": 7, "detail": "String array", "insertText": "Array[String]"}),
                             json!({"label": "Array[Bool]", "kind": 7, "detail": "Boolean array", "insertText": "Array[Bool]"}),
                         ];
-                        
+
                         let response = Message {
                             jsonrpc: "2.0".to_string(),
                             id: Some(id_val.clone()),
@@ -281,18 +318,22 @@ impl LspServer {
                     eprintln!("LSP: Sending initialization response");
                     self.send_message(response);
                 }
-                
+
                 "initialized" => {
                     eprintln!("LSP: Initialized");
                 }
-                
+
                 "textDocument/didOpen" => {
                     eprintln!("LSP: Document opened");
                     if let Some(params) = msg.params {
-                        eprintln!("LSP: didOpen params: {}", serde_json::to_string_pretty(&params).unwrap_or_default());
+                        eprintln!(
+                            "LSP: didOpen params: {}",
+                            serde_json::to_string_pretty(&params).unwrap_or_default()
+                        );
                         if let Some(uri) = params["textDocument"]["uri"].as_str() {
                             if let Some(text) = params["textDocument"]["text"].as_str() {
-                                if let Some(lang_id) = params["textDocument"]["languageId"].as_str() {
+                                if let Some(lang_id) = params["textDocument"]["languageId"].as_str()
+                                {
                                     eprintln!("LSP: Opened {} (language: {})", uri, lang_id);
                                 }
                                 self.documents.insert(uri.to_string(), text.to_string());
@@ -302,7 +343,7 @@ impl LspServer {
                         }
                     }
                 }
-                
+
                 "textDocument/didChange" => {
                     if let Some(params) = msg.params {
                         if let Some(uri) = params["textDocument"]["uri"].as_str() {
@@ -318,13 +359,16 @@ impl LspServer {
                         }
                     }
                 }
-                
+
                 "textDocument/completion" => {
                     eprintln!("LSP: Received completion request");
                     if let Some(params) = &msg.params {
-                        eprintln!("LSP: Completion params: {}", serde_json::to_string_pretty(params).unwrap_or_default());
+                        eprintln!(
+                            "LSP: Completion params: {}",
+                            serde_json::to_string_pretty(params).unwrap_or_default()
+                        );
                     }
-                    
+
                     // Enhanced completion items with generic type support
                     let items = vec![
                         // Keywords
@@ -336,34 +380,28 @@ impl LspServer {
                         json!({"label": "for", "kind": 14, "detail": "For loop", "insertText": "for "}),
                         json!({"label": "import", "kind": 14, "detail": "Import", "insertText": "import "}),
                         json!({"label": "return", "kind": 14, "detail": "Return statement", "insertText": "return "}),
-                        
                         // Built-in functions
                         json!({"label": "print", "kind": 3, "detail": "Print function", "insertText": "print("}),
-                        
                         // Built-in types
                         json!({"label": "Integer", "kind": 7, "detail": "Integer type", "insertText": "Integer"}),
                         json!({"label": "String", "kind": 7, "detail": "String type", "insertText": "String"}),
                         json!({"label": "Bool", "kind": 7, "detail": "Boolean type", "insertText": "Bool"}),
-                        
                         // Generic types and snippets
                         json!({"label": "Array[T]", "kind": 7, "detail": "Generic array type", "insertText": "Array[T]"}),
                         json!({"label": "Array[Integer]", "kind": 7, "detail": "Integer array", "insertText": "Array[Integer]"}),
                         json!({"label": "Array[String]", "kind": 7, "detail": "String array", "insertText": "Array[String]"}),
                         json!({"label": "Array[Bool]", "kind": 7, "detail": "Boolean array", "insertText": "Array[Bool]"}),
-                        
                         // Generic type patterns
                         json!({"label": "Result[T]", "kind": 7, "detail": "Generic result type", "insertText": "Result[T]"}),
                         json!({"label": "Box[T]", "kind": 7, "detail": "Generic box type", "insertText": "Box[T]"}),
-                        
                         // Common patterns
                         json!({"label": "for in", "kind": 15, "detail": "For-in loop with Array[T]", "insertText": "for item in "}),
                         json!({"label": "type def", "kind": 15, "detail": "Generic type definition", "insertText": "type Name[T] = { data: T }"}),
-                        
                         // Literals
                         json!({"label": "true", "kind": 12, "detail": "Boolean true", "insertText": "true"}),
                         json!({"label": "false", "kind": 12, "detail": "Boolean false", "insertText": "false"}),
                     ];
-                    
+
                     let response = Message {
                         jsonrpc: "2.0".to_string(),
                         id: msg.id,
@@ -372,21 +410,31 @@ impl LspServer {
                         result: Some(json!(items)),
                         error: None,
                     };
-                    eprintln!("LSP: Sending completion response with {} items", items.len());
+                    eprintln!(
+                        "LSP: Sending completion response with {} items",
+                        items.len()
+                    );
                     self.send_message(response);
                 }
-                
+
                 "textDocument/hover" => {
                     eprintln!("LSP: Received hover request");
                     if let Some(params) = &msg.params {
-                        eprintln!("LSP: Hover params: {}", serde_json::to_string_pretty(params).unwrap_or_default());
+                        eprintln!(
+                            "LSP: Hover params: {}",
+                            serde_json::to_string_pretty(params).unwrap_or_default()
+                        );
                         if let Some(uri) = params["textDocument"]["uri"].as_str() {
                             if let Some(position) = params["position"].as_object() {
                                 if let Some(line) = position["line"].as_u64() {
                                     if let Some(character) = position["character"].as_u64() {
                                         eprintln!("LSP: Hover at {}:{}", line, character);
                                         if let Some(doc) = self.documents.get(uri) {
-                                            let hover_info = self.get_hover_info(doc, line as usize, character as usize);
+                                            let hover_info = self.get_hover_info(
+                                                doc,
+                                                line as usize,
+                                                character as usize,
+                                            );
                                             let response = Message {
                                                 jsonrpc: "2.0".to_string(),
                                                 id: msg.id,
@@ -400,7 +448,10 @@ impl LspServer {
                                                 })),
                                                 error: None,
                                             };
-                                            eprintln!("LSP: Sending hover response: {}", hover_info);
+                                            eprintln!(
+                                                "LSP: Sending hover response: {}",
+                                                hover_info
+                                            );
                                             self.send_message(response);
                                             return;
                                         } else {
@@ -411,7 +462,7 @@ impl LspServer {
                             }
                         }
                     }
-                    
+
                     eprintln!("LSP: Sending null hover response");
                     // No hover info
                     let response = Message {
@@ -424,7 +475,7 @@ impl LspServer {
                     };
                     self.send_message(response);
                 }
-                
+
                 "shutdown" => {
                     let response = Message {
                         jsonrpc: "2.0".to_string(),
@@ -436,15 +487,18 @@ impl LspServer {
                     };
                     self.send_message(response);
                 }
-                
+
                 "exit" => {
                     std::process::exit(0);
                 }
-                
+
                 _ => {
                     eprintln!("LSP: Unknown method: {}", method);
-                    eprintln!("LSP: Full message: {}", serde_json::to_string_pretty(&msg).unwrap_or_default());
-                    
+                    eprintln!(
+                        "LSP: Full message: {}",
+                        serde_json::to_string_pretty(&msg).unwrap_or_default()
+                    );
+
                     // Send empty response for requests (messages with ID)
                     if msg.id.is_some() {
                         let response = Message {
@@ -464,7 +518,7 @@ impl LspServer {
 
     fn publish_diagnostics(&self, uri: &str, text: &str) {
         let mut diagnostics = Vec::new();
-        
+
         // Try to parse the document
         let mut lexer = Lexer::new(text.to_string());
         match lexer.tokenize() {
@@ -494,7 +548,7 @@ impl LspServer {
                 }));
             }
         }
-        
+
         // Check for common issues
         let lines: Vec<&str> = text.lines().collect();
         for (i, line) in lines.iter().enumerate() {
@@ -509,7 +563,7 @@ impl LspServer {
                     "message": "print function used but bolt:stdio not imported"
                 }));
             }
-            
+
             // Check for wrong assignment operator
             if line.contains("val ") && line.contains(" = ") && !line.contains(" := ") {
                 diagnostics.push(json!({
@@ -522,7 +576,7 @@ impl LspServer {
                 }));
             }
         }
-        
+
         let notification = Message {
             jsonrpc: "2.0".to_string(),
             id: None,
@@ -544,44 +598,47 @@ impl LspServer {
     }
 
     fn get_hover_info(&self, document: &str, line: usize, character: usize) -> String {
-        eprintln!("LSP: Getting hover info at line {} character {}", line, character);
-        
+        eprintln!(
+            "LSP: Getting hover info at line {} character {}",
+            line, character
+        );
+
         let lines: Vec<&str> = document.lines().collect();
         if line >= lines.len() {
             return "No information available".to_string();
         }
-        
+
         let current_line = lines[line];
         eprintln!("LSP: Current line: '{}'", current_line);
-        
+
         // Find the word at the cursor position
         if character >= current_line.len() {
             return "No information available".to_string();
         }
-        
+
         // Find word boundaries
         let mut start = character;
         let mut end = character;
-        
+
         let chars: Vec<char> = current_line.chars().collect();
-        
+
         // Move start backwards to find beginning of word
         while start > 0 && (chars[start - 1].is_alphanumeric() || chars[start - 1] == '_') {
             start -= 1;
         }
-        
+
         // Move end forwards to find end of word
         while end < chars.len() && (chars[end].is_alphanumeric() || chars[end] == '_') {
             end += 1;
         }
-        
+
         if start == end {
             return "No information available".to_string();
         }
-        
+
         let word: String = chars[start..end].iter().collect();
         eprintln!("LSP: Found word: '{}'", word);
-        
+
         // Provide specific hover information based on the word
         match word.as_str() {
             "print" => {
@@ -634,26 +691,26 @@ impl LspServer {
             }
         }
     }
-    
+
     fn find_variable_declaration(&self, document: &str, var_name: &str) -> Option<String> {
         eprintln!("LSP: Looking for variable declaration: {}", var_name);
-        
+
         let lines: Vec<&str> = document.lines().collect();
         eprintln!("LSP: Document has {} lines", lines.len());
-        
+
         for (i, line) in lines.iter().enumerate() {
             let line = line.trim();
-            
+
             // Look for val declarations: val name := value or val name: Type = value
             if line.starts_with("val ") {
                 if let Some(rest) = line.strip_prefix("val ") {
                     if let Some(name_part) = rest.split(&[' ', ':', '=']).next() {
                         if name_part == var_name {
                             eprintln!("LSP: Found val declaration at line {}: {}", i, line);
-                            
+
                             // Look for documentation comments above this declaration
                             let doc = self.extract_documentation(&lines, i);
-                            
+
                             // Extract type information if available
                             let type_info = if line.contains(':') {
                                 let parts: Vec<&str> = rest.split(':').collect();
@@ -666,30 +723,36 @@ impl LspServer {
                             } else {
                                 "Type: *inferred*".to_string()
                             };
-                            
-                            let mut result = format!("**`{}`**\n\n*Immutable variable*\n\n{}", var_name, type_info);
-                            
+
+                            let mut result = format!(
+                                "**`{}`**\n\n*Immutable variable*\n\n{}",
+                                var_name, type_info
+                            );
+
                             if let Some(documentation) = doc {
-                                result = format!("**`{}`**\n\n{}\n\n*Immutable variable*\n\n{}", var_name, documentation, type_info);
+                                result = format!(
+                                    "**`{}`**\n\n{}\n\n*Immutable variable*\n\n{}",
+                                    var_name, documentation, type_info
+                                );
                             }
-                            
+
                             eprintln!("LSP: Returning variable info for {}", var_name);
                             return Some(result);
                         }
                     }
                 }
             }
-            
+
             // Look for var declarations: var name := value or var name: Type = value
             if line.starts_with("var ") {
                 if let Some(rest) = line.strip_prefix("var ") {
                     if let Some(name_part) = rest.split(&[' ', ':', '=']).next() {
                         if name_part == var_name {
                             eprintln!("LSP: Found var declaration at line {}: {}", i, line);
-                            
+
                             // Look for documentation comments above this declaration
                             let doc = self.extract_documentation(&lines, i);
-                            
+
                             // Extract type information if available
                             let type_info = if line.contains(':') {
                                 let parts: Vec<&str> = rest.split(':').collect();
@@ -702,13 +765,19 @@ impl LspServer {
                             } else {
                                 "Type: *inferred*".to_string()
                             };
-                            
-                            let mut result = format!("**`{}`**\n\n*Mutable variable*\n\n{}", var_name, type_info);
-                            
+
+                            let mut result = format!(
+                                "**`{}`**\n\n*Mutable variable*\n\n{}",
+                                var_name, type_info
+                            );
+
                             if let Some(documentation) = doc {
-                                result = format!("**`{}`**\n\n{}\n\n*Mutable variable*\n\n{}", var_name, documentation, type_info);
+                                result = format!(
+                                    "**`{}`**\n\n{}\n\n*Mutable variable*\n\n{}",
+                                    var_name, documentation, type_info
+                                );
                             }
-                            
+
                             eprintln!("LSP: Returning variable info for {}", var_name);
                             return Some(result);
                         }
@@ -716,20 +785,20 @@ impl LspServer {
                 }
             }
         }
-        
+
         eprintln!("LSP: No variable declaration found for {}", var_name);
         None
     }
-    
+
     fn find_function_declaration(&self, document: &str, func_name: &str) -> Option<String> {
         eprintln!("LSP: Looking for function declaration: {}", func_name);
-        
+
         let lines: Vec<&str> = document.lines().collect();
         eprintln!("LSP: Document has {} lines", lines.len());
-        
+
         for (i, line) in lines.iter().enumerate() {
             let line = line.trim();
-            
+
             // Look for function declarations: fun name(params): ReturnType {
             if line.starts_with("fun ") {
                 if let Some(rest) = line.strip_prefix("fun ") {
@@ -738,25 +807,25 @@ impl LspServer {
                         let name_part = rest[..paren_pos].trim();
                         if name_part == func_name {
                             eprintln!("LSP: Found function declaration at line {}: {}", i, line);
-                            
+
                             // Look for documentation comments above this declaration
                             let doc = self.extract_documentation(&lines, i);
-                            
+
                             // Extract function signature - be more careful here
                             let mut signature = String::new();
                             let mut brace_count = 0;
                             let mut in_function = false;
-                            
+
                             // Build the complete function signature (may span multiple lines)
                             for j in i..lines.len() {
                                 if j >= lines.len() {
                                     eprintln!("LSP: Breaking - line index {} out of bounds", j);
                                     break;
                                 }
-                                
+
                                 let func_line = lines[j].trim();
                                 signature.push_str(func_line);
-                                
+
                                 if func_line.contains('{') {
                                     brace_count += func_line.matches('{').count();
                                     in_function = true;
@@ -764,29 +833,35 @@ impl LspServer {
                                 if func_line.contains('}') {
                                     brace_count -= func_line.matches('}').count();
                                 }
-                                
+
                                 if in_function && brace_count == 0 {
                                     break;
                                 }
-                                
+
                                 if !func_line.ends_with('{') && j < lines.len() - 1 {
                                     signature.push(' ');
                                 }
                             }
-                            
+
                             // Extract just the signature part (before the opening brace)
                             if let Some(brace_pos) = signature.find('{') {
                                 signature = signature[..brace_pos].trim().to_string();
                             }
-                            
+
                             eprintln!("LSP: Function signature: {}", signature);
-                            
-                            let mut result = format!("**`{}`**\n\n*Function*\n\n```bolt\n{}\n```", func_name, signature);
-                            
+
+                            let mut result = format!(
+                                "**`{}`**\n\n*Function*\n\n```bolt\n{}\n```",
+                                func_name, signature
+                            );
+
                             if let Some(documentation) = doc {
-                                result = format!("**`{}`**\n\n{}\n\n*Function*\n\n```bolt\n{}\n```", func_name, documentation, signature);
+                                result = format!(
+                                    "**`{}`**\n\n{}\n\n*Function*\n\n```bolt\n{}\n```",
+                                    func_name, documentation, signature
+                                );
                             }
-                            
+
                             eprintln!("LSP: Returning function info for {}", func_name);
                             return Some(result);
                         }
@@ -794,59 +869,72 @@ impl LspServer {
                 }
             }
         }
-        
+
         eprintln!("LSP: No function declaration found for {}", func_name);
         None
     }
-    
+
     fn extract_documentation(&self, lines: &[&str], declaration_line: usize) -> Option<String> {
-        eprintln!("LSP: Extracting docs for declaration at line {}", declaration_line);
-        
+        eprintln!(
+            "LSP: Extracting docs for declaration at line {}",
+            declaration_line
+        );
+
         if lines.is_empty() || declaration_line >= lines.len() {
             eprintln!("LSP: Invalid lines or declaration_line");
             return None;
         }
-        
+
         let mut docs = Vec::new();
         let mut i = declaration_line;
         let mut found_end = false;
-        
+
         // Go backwards to find documentation comments
         while i > 0 {
             i -= 1;
-            
+
             if i >= lines.len() {
                 eprintln!("LSP: Index {} out of bounds for {} lines", i, lines.len());
                 break;
             }
-            
+
             let line = lines[i].trim();
             eprintln!("LSP: Checking line {}: '{}'", i, line);
-            
+
             // Skip empty lines
             if line.is_empty() {
                 eprintln!("LSP: Skipping empty line");
                 continue;
             }
-            
+
             // Handle end of multiline comment */
             if line.ends_with("*/") && !found_end {
                 found_end = true;
                 eprintln!("LSP: Found comment end");
-                
-                // Handle single-line /** content */ 
+
+                // Handle single-line /** content */
                 if line.starts_with("/**") {
-                    let content = line.strip_prefix("/**").unwrap_or("").strip_suffix("*/").unwrap_or("").trim();
+                    let content = line
+                        .strip_prefix("/**")
+                        .unwrap_or("")
+                        .strip_suffix("*/")
+                        .unwrap_or("")
+                        .trim();
                     eprintln!("LSP: Single-line comment content: '{}'", content);
                     if !content.is_empty() {
                         docs.insert(0, content.to_string());
                     }
                     break;
                 }
-                
+
                 // Handle last line of multiline comment: * content */
-                if line.starts_with("*") {
-                    let content = line.strip_prefix("*").unwrap_or("").strip_suffix("*/").unwrap_or("").trim();
+                if line.starts_with('*') {
+                    let content = line
+                        .strip_prefix('*')
+                        .unwrap_or("")
+                        .strip_suffix("*/")
+                        .unwrap_or("")
+                        .trim();
                     eprintln!("LSP: End comment line content: '{}'", content);
                     if !content.is_empty() {
                         docs.insert(0, content.to_string());
@@ -854,23 +942,23 @@ impl LspServer {
                 }
                 continue;
             }
-            
+
             // Only process lines after we found the end
             if !found_end {
                 eprintln!("LSP: No comment end found yet, stopping");
                 break;
             }
-            
+
             // Handle middle lines of multiline comment: * content
-            if line.starts_with("*") && !line.starts_with("/**") {
-                let content = line.strip_prefix("*").unwrap_or("").trim();
+            if line.starts_with('*') && !line.starts_with("/**") {
+                let content = line.strip_prefix('*').unwrap_or("").trim();
                 eprintln!("LSP: Middle comment line content: '{}'", content);
                 if !content.is_empty() {
                     docs.insert(0, content.to_string());
                 }
                 continue;
             }
-            
+
             // Handle start of multiline comment: /**
             if line.starts_with("/**") && !line.ends_with("*/") {
                 let content = line.strip_prefix("/**").unwrap_or("").trim();
@@ -880,12 +968,12 @@ impl LspServer {
                 }
                 break;
             }
-            
+
             // If we hit a non-comment line, stop
             eprintln!("LSP: Hit non-comment line, stopping");
             break;
         }
-        
+
         eprintln!("LSP: Extracted {} documentation lines", docs.len());
         if docs.is_empty() {
             None
