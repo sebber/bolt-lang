@@ -2,6 +2,7 @@ mod lexer;
 mod parser;
 mod ast;
 mod c_codegen;
+mod codegen;
 mod module;
 mod error;
 
