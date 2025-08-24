@@ -1,0 +1,8 @@
+import { print } from "bolt:stdio"
+
+fun getNumber(): Integer {
+    return 42
+}
+
+val result := getNumber()
+print(result)

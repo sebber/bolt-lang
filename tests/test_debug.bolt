@@ -1,0 +1,6 @@
+import math from "bolt:math"
+import { print } from "bolt:stdio"
+
+val result := math.max(5, 3)
+print(result)
+print("Test")

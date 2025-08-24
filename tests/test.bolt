@@ -1,0 +1,6 @@
+import { print } from "bolt:stdio"
+
+val name: String = "Bolt"
+val age := 42
+print(name)
+print(age)

@@ -1,0 +1,90 @@
+import { print } from "bolt:stdio"
+
+fun add(a: Integer, b: Integer): Integer {
+    return a + b
+}
+
+fun subtract(a: Integer, b: Integer): Integer {
+    return a - b
+}
+
+fun multiply(a: Integer, b: Integer): Integer {
+    return a * b
+}
+
+/**
+ * This is a cool divide function
+ */
+fun divide(a: Integer, b: Integer): Integer {
+    return a / b
+}
+
+fun is_even(n: Integer): Bool {
+    return n % 2 == 0
+}
+
+fun max(a: Integer, b: Integer): Integer {
+    if (a > b) {
+        return a
+    } else {
+        return b
+    }
+}
+
+print("=== Bolt Language Calculator Demo ===")
+
+val x := 42
+val y := 18
+
+print("Initial values:")
+print(x)
+print(y)
+
+print("Basic arithmetic:")
+val sum := add(x, y)
+val difference := subtract(x, y)
+val product := multiply(x, y)
+val quotient := divide(x, y)
+
+print(sum)
+print(difference)
+print(product)
+print(quotient)
+
+print("Comparisons:")
+val x_greater := x > y
+val x_equal := x == y
+val y_less := y < x
+
+print(x_greater)
+print(x_equal)
+print(y_less)
+
+print("Even/odd check:")
+val x_even := is_even(x)
+val y_even := is_even(y)
+
+print(x_even)
+print(y_even)
+
+print("Maximum function:")
+val maximum := max(x, y)
+print(maximum)
+
+print("Working with arrays:")
+val numbers := [10, 20, 30, 40, 50]
+val first := 10
+val last := 50
+val range_check := first <= last
+
+print("Range valid:")
+print(range_check)
+
+print("Complex expressions:")
+val complex1 := (x + y) * 2 - 10
+val complex2 := x % 7 + y / 3
+
+print(complex1)
+print(complex2)
+
+print("=== Demo Complete ===")

@@ -1,0 +1,7 @@
+export fun print(message: String): Integer {
+    return 0
+}
+
+export fun println(message: String): Integer {
+    return 0
+}

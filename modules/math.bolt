@@ -1,0 +1,15 @@
+fun add(a: Integer, b: Integer): Integer {
+    return a + b
+}
+
+fun multiply(x: Integer, y: Integer): Integer {
+    return x * y
+}
+
+fun square(n: Integer): Integer {
+    return n * n
+}
+
+export add
+export multiply
+export square

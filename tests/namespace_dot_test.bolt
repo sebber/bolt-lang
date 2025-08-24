@@ -1,0 +1,8 @@
+import math from "modules/math"
+
+val a := 5
+val b := 3
+val sum := math.add(a, b)
+
+print(sum)
+print("Namespace dot test complete!")

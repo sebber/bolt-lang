@@ -1,0 +1,11 @@
+import { print } from "bolt:stdio"
+
+val age := 25
+
+if (false) {
+    print("First condition")
+} else if (true) {
+    print("Second condition - this should print!")
+} else {
+    print("Final fallback")
+}

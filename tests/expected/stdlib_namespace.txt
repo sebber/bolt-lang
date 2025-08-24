@@ -1,0 +1,2 @@
+42
+Standard library namespace test complete!

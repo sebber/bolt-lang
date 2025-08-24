@@ -1,0 +1,26 @@
+import { print } from "bolt:stdio"
+
+val x := 10
+val y := 5
+val z := 0
+
+val and_true := x > y && y > z
+val and_false := x > y && z > y
+
+val or_true := x > y || z > y
+val or_false := z > x || z > y
+
+val not_true := !false
+val not_false := !true
+
+val complex1 := x > y && (z == 0 || y > 10)
+val complex2 := !(x < y) && y != 0
+
+print(and_true)
+print(and_false)
+print(or_true)
+print(or_false)
+print(not_true)
+print(not_false)
+print(complex1)
+print(complex2)

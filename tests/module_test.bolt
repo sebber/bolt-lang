@@ -1,0 +1,12 @@
+import { add, multiply } from "modules/math"
+import { max } from "modules/utils"
+
+val result1 := add(5, 3)
+val result2 := multiply(4, 7)
+val result3 := max(result1, result2)
+
+print(result1)
+print(result2)
+print(result3)
+
+print("Module test complete!")

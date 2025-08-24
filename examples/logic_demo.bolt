@@ -1,0 +1,54 @@
+import { print } from "bolt:stdio"
+
+print("=== Bolt Logic Demo ===")
+
+val age := 25
+val has_license := true
+val has_car := false
+
+print("Person info:")
+print(age)
+print(has_license)
+print(has_car)
+
+val can_drive := age >= 18 && has_license
+val needs_ride := !has_car || age < 16
+val eligible_for_job := age >= 21 && (has_license || has_car)
+
+print("Logic results:")
+print(can_drive)
+print(needs_ride)
+print(eligible_for_job)
+
+val score := 85
+val attendance := 90
+
+val passing_grade := score >= 70
+val good_attendance := attendance >= 80
+val honors := passing_grade && good_attendance && score >= 85
+
+print("Academic evaluation:")
+print(passing_grade)
+print(good_attendance)
+print(honors)
+
+val x := 10
+val y := 20
+val z := 15
+
+val in_range := x <= z && z <= y
+val outlier := z < x || z > y
+val perfect_middle := !outlier && z > x && z < y
+
+print("Range analysis:")
+print(in_range)
+print(outlier)
+print(perfect_middle)
+
+if (can_drive && !has_car) {
+    print("Can drive but needs a car")
+} else {
+    print("Either can't drive or has a car")
+}
+
+print("=== Demo Complete ===")

@@ -1,0 +1,35 @@
+import { print } from "bolt:stdio"
+
+val x := 10
+val y := 5
+
+val equal_true := x == 10
+val equal_false := x == 7
+
+val not_equal_true := x != 7
+val not_equal_false := x != 10
+
+val less_true := y < x
+val less_false := x < y
+
+val less_equal_true := y <= x
+val less_equal_same := x <= 10
+
+val greater_true := x > y
+val greater_false := y > x
+
+val greater_equal_true := x >= y
+val greater_equal_same := x >= 10
+
+print(equal_true)
+print(equal_false)
+print(not_equal_true)
+print(not_equal_false)
+print(less_true)
+print(less_false)
+print(less_equal_true)
+print(less_equal_same)
+print(greater_true)
+print(greater_false)
+print(greater_equal_true)
+print(greater_equal_same)

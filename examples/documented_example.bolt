@@ -1,0 +1,41 @@
+/**
+ * This is a documented variable that stores the user's name
+ * It demonstrates how documentation comments work in Bolt
+ */
+val userName: String = "Alice"
+
+/**
+ * A simple counter that can be modified
+ * Used to track the number of operations performed
+ */
+var counter: Integer = 0
+
+/**
+ * Calculates the factorial of a given number
+ * This function uses recursion to compute the result
+ * 
+ * Example usage:
+ * val result = factorial(5)  // Returns 120
+ */
+fun factorial(n: Integer): Integer {
+    if n <= 1 {
+        return 1
+    } else {
+        return n * factorial(n - 1)
+    }
+}
+
+/**
+ * Greets a user with a personalized message
+ * This function demonstrates string concatenation
+ * and function parameters in Bolt
+ */
+fun greetUser(name: String): String {
+    return "Hello, " + name + "! Welcome to Bolt!"
+}
+
+/** A single-line documented constant */
+val PI: Double = 3.14159
+
+print(greetUser(userName))
+print(factorial(5))

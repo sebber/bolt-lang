@@ -1,0 +1,14 @@
+// Bolt Standard Library - Array Module
+
+export fun length(arr: Array): Integer {
+    // For now, this would need to be implemented in the runtime
+    // In a real implementation, we'd track array length
+    return 0
+}
+
+export fun sum(arr: Array): Integer {
+    // For now, simplified - would iterate through array in real implementation
+    var total := 0
+    // In future: for item in arr { total := total + item }
+    return total
+}

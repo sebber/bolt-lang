@@ -1,0 +1,42 @@
+# Rust build artifacts
+/target/
+# Cargo.lock - Keep for applications, ignore for libraries
+
+# Bolt compiler output
+out/
+*.c
+
+# Development scratch files  
+dev_scratch/
+
+# Internal development docs
+CLAUDE.md
+DEVELOPMENT.md
+
+# Editor and system files
+*.tmp
+*.swp
+.DS_Store
+.vscode/settings.json
+.vscode/launch.json
+*.log
+
+# Personal config files  
+nvim-config.lua
+
+# Node.js (for VS Code extension development)
+bolt-vscode-extension/node_modules/
+bolt-vscode-extension/.vscode/
+bolt-vscode-extension/*.vsix
+
+# macOS
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini

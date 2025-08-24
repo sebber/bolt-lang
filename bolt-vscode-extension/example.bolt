@@ -1,0 +1,56 @@
+// Bolt Language Example - Test Syntax Highlighting
+import { print, println } from "bolt:stdio"
+import math from "bolt:math"
+
+// Custom type definition
+def Point = {
+    x: Integer,
+    y: Integer
+}
+
+// Function with pointer parameters
+fun swap(a: ^Integer, b: ^Integer): Bool {
+    if (a^ > b^) {
+        val temp := a^
+        // Note: This would need proper assignment syntax in real Bolt
+        return true
+    } else {
+        return false
+    }
+}
+
+// Main program
+val x := 42
+val y := 100
+val numbers := [1, 2, 3, 4, 5]
+
+// Pointer operations
+val ptr_x: ^Integer = &x
+val value := ptr_x^
+
+// Array access
+val first := numbers[0]
+val last := numbers[4]
+
+// Struct creation
+val origin := Point { x: 0, y: 0 }
+val point := Point { x: 3, y: 4 }
+
+// Boolean operations
+val is_greater := x > y && value != 0
+val is_valid := !false || (x >= 10)
+
+// Function calls
+val sum := math.add(x, y)
+val distance := math.abs(point.x - origin.x)
+
+// Output
+print("Bolt syntax highlighting test:")
+println(value)
+println(first)
+println(sum)
+
+// Loop
+for (item in numbers) {
+    print(item)
+}

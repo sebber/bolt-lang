@@ -1,0 +1,3 @@
+export fun test(): Integer {
+    return 42
+}

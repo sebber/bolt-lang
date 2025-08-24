@@ -1,0 +1,9 @@
+import math from "bolt:math"
+import { print } from "bolt:stdio"
+
+val a := 5
+val b := 3  
+val result := math.max(a, b)
+
+print(result)
+print("Simple stdlib test complete!")

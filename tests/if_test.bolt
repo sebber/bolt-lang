@@ -1,0 +1,13 @@
+import { print } from "bolt:stdio"
+
+val condition := true
+
+if (condition) {
+    print("This should print!")
+}
+
+if (false) {
+    print("This should NOT print")
+} else {
+    print("This should print instead")
+}

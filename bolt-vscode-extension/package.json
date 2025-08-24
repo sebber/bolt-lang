@@ -1,0 +1,49 @@
+{
+  "name": "bolt-language",
+  "displayName": "Bolt Language",
+  "description": "Syntax highlighting and IntelliSense for the Bolt programming language",
+  "version": "0.2.0",
+  "publisher": "bolt-lang",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onLanguage:bolt"
+  ],
+  "devDependencies": {
+    "vscode-languageclient": "^7.0.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "bolt",
+        "aliases": ["Bolt", "bolt"],
+        "extensions": [".bolt"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "bolt",
+        "scopeName": "source.bolt",
+        "path": "./syntaxes/bolt.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "bolt.restartLSP",
+        "title": "Restart Bolt Language Server",
+        "category": "Bolt"
+      },
+      {
+        "command": "bolt.showLSPOutput",
+        "title": "Show Bolt LSP Output",
+        "category": "Bolt"
+      }
+    ]
+  }
+}

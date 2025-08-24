@@ -1,0 +1,2 @@
+import stdio from "bolt:stdio"
+val x := 42

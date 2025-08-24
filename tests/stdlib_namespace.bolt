@@ -1,0 +1,6 @@
+import simple from "bolt:simple"
+import stdio from "bolt:stdio"
+
+val result := simple.test()
+stdio.print(result)
+stdio.print("Standard library namespace test complete!")

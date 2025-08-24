@@ -1,0 +1,14 @@
+import { print } from "bolt:stdio"
+
+def Person = {
+    name: String,
+    age: Integer,
+    active: Bool
+}
+
+def Point = {
+    x: Integer,
+    y: Integer
+}
+
+print("Type definitions created")

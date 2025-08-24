@@ -1,0 +1,7 @@
+import { print } from "bolt:stdio"
+
+for num in [1, 2, 3] {
+    print(num)
+}
+
+val numbers := [4, 5, 6]

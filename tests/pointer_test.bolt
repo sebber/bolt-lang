@@ -1,0 +1,18 @@
+import { print } from "bolt:stdio"
+
+val x := 42
+val y := 100
+
+val ptr_x := &x
+val ptr_y := &y
+
+val deref_x := ptr_x^
+val deref_y := ptr_y^
+
+print("Basic pointer operations:")
+print(deref_x)
+print(deref_y)
+
+val z: ^Integer = &x
+val deref_z := z^
+print(deref_z)

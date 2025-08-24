@@ -1,0 +1,6 @@
+import { print } from "bolt:stdio"
+
+val isTrue: Bool = true
+val isFalse := false
+print(isTrue)
+print(isFalse)

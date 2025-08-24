@@ -1,0 +1,15 @@
+import { print } from "bolt:stdio"
+
+val numbers := [1, 2, 3, 4, 5]
+
+for num in numbers {
+    print(num)
+}
+
+for item in [10, 20, 30] {
+    print(item)
+    val doubled := item * 2
+    print(doubled)
+}
+
+print("Done!")

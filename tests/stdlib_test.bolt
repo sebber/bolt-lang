@@ -1,0 +1,12 @@
+import math from "bolt:math"
+import { print } from "bolt:stdio"
+
+val a := 5
+val b := 3
+val result := math.max(a, b)
+val neg_ten := 0 - 10
+val absolute := math.abs(neg_ten)
+
+print(result)
+print(absolute)
+print("Standard library test complete!")

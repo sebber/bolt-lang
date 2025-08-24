@@ -1,0 +1,7 @@
+import { print } from "bolt:stdio"
+
+fun printNumber(num: Integer) {
+    print(num)
+}
+
+printNumber(123)

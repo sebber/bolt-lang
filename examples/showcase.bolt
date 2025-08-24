@@ -1,0 +1,46 @@
+import { print } from "bolt:stdio"
+
+print("=== Bolt Language Showcase ===")
+
+val greeting := "Hello, Bolt!"
+print(greeting)
+
+val x := 10
+val y := 20
+val sum := x + y
+val product := x * y
+val difference := y - x
+
+print("Mathematics:")
+print(sum)
+print(product) 
+print(difference)
+
+val is_positive := sum > 0
+val is_equal := x == y
+val is_greater := y > x
+
+print("Logic:")
+print(is_positive)
+print(is_equal)
+print(is_greater)
+
+val numbers := [5, 10, 15, 20, 25]
+print("Array created successfully")
+
+val complex_expr := (x + y) * 2
+val remainder := y % 7
+val division := y / x
+
+print("Complex expressions:")
+print(complex_expr)
+print(remainder)
+print(division)
+
+if (x < y) {
+    print("x is less than y")
+} else {
+    print("x is not less than y")
+}
+
+print("=== Showcase Complete ===")

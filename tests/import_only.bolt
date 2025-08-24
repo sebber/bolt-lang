@@ -1,0 +1,4 @@
+import math from "bolt:math"
+import { print } from "bolt:stdio"
+
+print("Import test")

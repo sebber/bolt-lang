@@ -1,0 +1,5 @@
+import { print } from "bolt:stdio"
+
+val numbers := [1, 2, 3, 4, 5]
+val mixed := [10, 20, 30]
+print("Array test complete")

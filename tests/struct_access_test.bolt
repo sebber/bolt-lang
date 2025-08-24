@@ -1,0 +1,36 @@
+import { print } from "bolt:stdio"
+
+def Person = {
+    name: String,
+    age: Integer,
+    active: Bool
+}
+
+def Point = {
+    x: Integer,
+    y: Integer
+}
+
+val alice := Person {
+    name: "Alice",
+    age: 30,
+    active: true
+}
+
+val origin := Point {
+    x: 0,
+    y: 0
+}
+
+print(alice.name)
+print(alice.age)
+print(alice.active)
+
+print(origin.x)
+print(origin.y)
+
+val alice_age := alice.age
+val point_sum := origin.x + origin.y
+
+print(alice_age)
+print(point_sum)

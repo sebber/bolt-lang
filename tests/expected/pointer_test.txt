@@ -1,0 +1,4 @@
+Basic pointer operations:
+42
+100
+42

@@ -1,0 +1,18 @@
+fun max(a: Integer, b: Integer): Integer {
+    if (a > b) {
+        return a
+    } else {
+        return b
+    }
+}
+
+fun min(a: Integer, b: Integer): Integer {
+    if (a < b) {
+        return a
+    } else {
+        return b
+    }
+}
+
+export max
+export min

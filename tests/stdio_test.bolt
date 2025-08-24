@@ -1,0 +1,3 @@
+import stdio from "bolt:stdio"
+
+stdio.print("Hello from stdio!")
