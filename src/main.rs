@@ -5,6 +5,7 @@ mod c_codegen;
 mod codegen;
 mod module;
 mod error;
+mod symbol_table;
 
 use std::fs;
 use std::process::Command;
@@ -74,12 +75,15 @@ fn run() -> Result<(), CompileError> {
     let ast = parser.parse()
         .map_err(|e| CompileError::CodegenError(format!("Parser error: {}", e)))?;
     
+    // Extract symbol table from parser
+    let symbol_table = parser.into_symbol_table();
+    
     // Resolve imports and load modules
     module_system.resolve_imports(&ast)
         .map_err(|e| CompileError::CodegenError(format!("Module resolution error: {}", e)))?;
     
-    // Code generation with module support
-    let mut codegen = CCodeGen::new();
+    // Code generation with module support and symbol table
+    let mut codegen = CCodeGen::with_symbol_table(symbol_table);
     let c_code = codegen.compile_program_with_modules(ast, &module_system);
     
     // Output generated C code for debugging (only in debug mode)

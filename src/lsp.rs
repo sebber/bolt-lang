@@ -6,6 +6,8 @@ use serde_json::{json, Value};
 mod lexer;
 mod parser;
 mod ast;
+mod symbol_table;
+mod error;
 
 use lexer::Lexer;
 use parser::Parser;

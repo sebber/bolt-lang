@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use crate::ast::{Program, Statement, Expression, Type, BinaryOperator, UnaryOperator, Field};
 use crate::module::ModuleSystem;
+use crate::symbol_table::SymbolTable;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MonomorphicType {
@@ -26,6 +27,7 @@ pub struct CCodeGen {
     variables: HashMap<String, String>,
     functions: Vec<String>,
     main_code: String,
+    symbol_table: SymbolTable,
     // Monomorphization state
     generic_types: HashMap<String, (Vec<String>, Vec<Field>)>, // base_name -> (type_params, fields)
     required_monomorphs: HashSet<MonomorphicType>, // Track which concrete types are needed
@@ -38,6 +40,20 @@ impl CCodeGen {
             variables: HashMap::new(),
             functions: Vec::new(),
             main_code: String::new(),
+            symbol_table: SymbolTable::new(),
+            generic_types: HashMap::new(),
+            required_monomorphs: HashSet::new(),
+            generated_monomorphs: HashMap::new(),
+        }
+    }
+    
+    pub fn with_symbol_table(symbol_table: SymbolTable) -> Self {
+        let variables = symbol_table.to_legacy_variables();
+        Self {
+            variables,
+            functions: Vec::new(),
+            main_code: String::new(),
+            symbol_table,
             generic_types: HashMap::new(),
             required_monomorphs: HashSet::new(),
             generated_monomorphs: HashMap::new(),

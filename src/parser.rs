@@ -1,16 +1,32 @@
 use crate::lexer::{Token, TokenType};
 use crate::ast::{Statement, Expression, Type, Field, Program, Parameter, BinaryOperator, UnaryOperator, StructField};
+use crate::symbol_table::{SymbolTable, ScopeKind};
 
 pub type ParseResult<T> = std::result::Result<T, String>;
 
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    symbol_table: SymbolTable,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, current: 0 }
+        Self { 
+            tokens, 
+            current: 0,
+            symbol_table: SymbolTable::new(),
+        }
+    }
+
+    /// Get a reference to the symbol table after parsing
+    pub fn symbol_table(&self) -> &SymbolTable {
+        &self.symbol_table
+    }
+
+    /// Take ownership of the symbol table (consumes the parser)
+    pub fn into_symbol_table(self) -> SymbolTable {
+        self.symbol_table
     }
 
     pub fn parse(&mut self) -> ParseResult<Program> {
@@ -91,6 +107,20 @@ impl Parser {
             panic!("Expected ':' or ':=' after variable name");
         }
 
+        // Register variable in symbol table
+        let var_type = if let Some(ref explicit_type) = type_annotation {
+            explicit_type.clone()
+        } else {
+            // For now, we'll infer type from value during semantic analysis
+            // For parsing stage, we'll use a placeholder
+            Type::Custom("inferred".to_string())
+        };
+        
+        // Register the variable as mutable in the symbol table
+        if let Err(e) = self.symbol_table.declare_variable(name.clone(), var_type, true, None) {
+            panic!("Error declaring variable '{}': {}", name, e);
+        }
+
         Statement::VarDecl {
             name,
             type_annotation,
@@ -124,6 +154,19 @@ impl Parser {
             value = self.parse_expression();
         } else {
             panic!("Expected ':' or ':=' after variable name");
+        }
+
+        // Register variable in symbol table
+        let var_type = if let Some(ref explicit_type) = type_annotation {
+            explicit_type.clone()
+        } else {
+            // For now, we'll infer type from value during semantic analysis
+            Type::Custom("inferred".to_string())
+        };
+        
+        // Register the variable as immutable in the symbol table
+        if let Err(e) = self.symbol_table.declare_variable(name.clone(), var_type, false, None) {
+            panic!("Error declaring variable '{}': {}", name, e);
         }
 
         Statement::ValDecl {
@@ -921,6 +964,8 @@ impl Parser {
         self.advance(); // consume '('
 
         let mut params = Vec::new();
+        let mut param_types = Vec::new();
+        
         while self.peek().token_type != TokenType::RightParen && !self.is_at_end() {
             let param_name = match &self.advance().token_type {
                 TokenType::Identifier(name) => name.clone(),
@@ -933,6 +978,7 @@ impl Parser {
             self.advance(); // consume ':'
 
             let param_type = self.parse_type();
+            param_types.push(param_type.clone());
 
             params.push(Parameter {
                 name: param_name,
@@ -955,6 +1001,21 @@ impl Parser {
             return_type = Some(self.parse_type());
         }
 
+        // Register function in symbol table
+        if let Err(e) = self.symbol_table.declare_function(name.clone(), param_types, return_type.clone(), None) {
+            panic!("Error declaring function '{}': {}", name, e);
+        }
+
+        // Enter function scope
+        self.symbol_table.enter_scope(ScopeKind::Function { name: name.clone() });
+
+        // Register parameters in the function scope
+        for param in &params {
+            if let Err(e) = self.symbol_table.declare_parameter(param.name.clone(), param.param_type.clone(), None) {
+                panic!("Error declaring parameter '{}': {}", param.name, e);
+            }
+        }
+
         if self.peek().token_type != TokenType::LeftBrace {
             panic!("Expected '{{' after function signature");
         }
@@ -973,6 +1034,11 @@ impl Parser {
             panic!("Expected '}}'");
         }
         self.advance(); // consume '}'
+
+        // Exit function scope
+        if let Err(e) = self.symbol_table.exit_scope() {
+            panic!("Error exiting function scope: {}", e);
+        }
 
         Statement::Function {
             name,
