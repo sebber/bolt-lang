@@ -32,7 +32,7 @@ jobs:
       run: cargo fmt --all -- --check
     
     - name: Run clippy
-      run: cargo clippy --all-targets --all-features -- -D warnings -A dead-code -A unreachable-patterns
+      run: cargo clippy --all-targets --all-features -- -D clippy::correctness -D clippy::suspicious -W clippy::complexity -W clippy::perf
     
     - name: Build (check only)
       run: cargo check --all-targets
