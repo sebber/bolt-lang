@@ -1017,3 +1017,176 @@ impl Parser {
         self.peek().token_type == TokenType::Eof
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lexer::Lexer;
+
+    fn parse_type_from_string(input: &str) -> Type {
+        let mut lexer = Lexer::new(input.to_string());
+        let tokens = lexer.tokenize().unwrap();
+        let mut parser = Parser::new(tokens);
+        parser.parse_type()
+    }
+
+    fn parse_statement_from_string(input: &str) -> Statement {
+        let mut lexer = Lexer::new(input.to_string());
+        let tokens = lexer.tokenize().unwrap();
+        let mut parser = Parser::new(tokens);
+        parser.parse_statement()
+    }
+
+    #[test]
+    fn test_basic_type_parsing() {
+        assert!(matches!(parse_type_from_string("String"), Type::String));
+        assert!(matches!(parse_type_from_string("Integer"), Type::Integer));
+        assert!(matches!(parse_type_from_string("Bool"), Type::Bool));
+    }
+
+    #[test]
+    fn test_custom_type_parsing() {
+        match parse_type_from_string("MyType") {
+            Type::Custom(name) => assert_eq!(name, "MyType"),
+            _ => panic!("Expected Custom type"),
+        }
+    }
+
+    #[test]
+    fn test_generic_type_parsing() {
+        // Test Array[Integer]
+        match parse_type_from_string("Array[Integer]") {
+            Type::Generic { name, type_params } => {
+                assert_eq!(name, "Array");
+                assert_eq!(type_params.len(), 1);
+                assert!(matches!(type_params[0], Type::Integer));
+            }
+            _ => panic!("Expected Generic type"),
+        }
+
+        // Test Map[String, Integer]
+        match parse_type_from_string("Map[String, Integer]") {
+            Type::Generic { name, type_params } => {
+                assert_eq!(name, "Map");
+                assert_eq!(type_params.len(), 2);
+                assert!(matches!(type_params[0], Type::String));
+                assert!(matches!(type_params[1], Type::Integer));
+            }
+            _ => panic!("Expected Generic type"),
+        }
+    }
+
+    #[test]
+    fn test_nested_generic_type_parsing() {
+        // Test Array[Array[Integer]]
+        match parse_type_from_string("Array[Array[Integer]]") {
+            Type::Generic { name, type_params } => {
+                assert_eq!(name, "Array");
+                assert_eq!(type_params.len(), 1);
+                match &type_params[0] {
+                    Type::Generic { name: inner_name, type_params: inner_params } => {
+                        assert_eq!(inner_name, "Array");
+                        assert_eq!(inner_params.len(), 1);
+                        assert!(matches!(inner_params[0], Type::Integer));
+                    }
+                    _ => panic!("Expected nested Generic type"),
+                }
+            }
+            _ => panic!("Expected Generic type"),
+        }
+    }
+
+    #[test]
+    fn test_pointer_type_parsing() {
+        match parse_type_from_string("^Integer") {
+            Type::Pointer(inner) => assert!(matches!(inner.as_ref(), Type::Integer)),
+            _ => panic!("Expected Pointer type"),
+        }
+
+        // Test ^Array[String]
+        match parse_type_from_string("^Array[String]") {
+            Type::Pointer(inner) => {
+                match inner.as_ref() {
+                    Type::Generic { name, type_params } => {
+                        assert_eq!(name, "Array");
+                        assert_eq!(type_params.len(), 1);
+                        assert!(matches!(type_params[0], Type::String));
+                    }
+                    _ => panic!("Expected Generic type inside pointer"),
+                }
+            }
+            _ => panic!("Expected Pointer type"),
+        }
+    }
+
+    #[test]
+    fn test_generic_type_definition_parsing() {
+        let input = "type Array[T] = { data: ^T, length: Integer }";
+        match parse_statement_from_string(input) {
+            Statement::TypeDef { name, type_params, fields } => {
+                assert_eq!(name, "Array");
+                assert_eq!(type_params.len(), 1);
+                assert_eq!(type_params[0], "T");
+                assert_eq!(fields.len(), 2);
+                
+                // Check first field: data: ^T
+                assert_eq!(fields[0].name, "data");
+                match &fields[0].field_type {
+                    Type::Pointer(inner) => {
+                        match inner.as_ref() {
+                            Type::Custom(param_name) => assert_eq!(param_name, "T"),
+                            _ => panic!("Expected Custom type (type parameter) in pointer"),
+                        }
+                    }
+                    _ => panic!("Expected Pointer type for data field"),
+                }
+                
+                // Check second field: length: Integer
+                assert_eq!(fields[1].name, "length");
+                assert!(matches!(fields[1].field_type, Type::Integer));
+            }
+            _ => panic!("Expected TypeDef statement"),
+        }
+    }
+
+    #[test]
+    fn test_multi_param_generic_definition() {
+        let input = "type Map[K, V] = { keys: Array[K], values: Array[V] }";
+        match parse_statement_from_string(input) {
+            Statement::TypeDef { name, type_params, fields } => {
+                assert_eq!(name, "Map");
+                assert_eq!(type_params.len(), 2);
+                assert_eq!(type_params[0], "K");
+                assert_eq!(type_params[1], "V");
+                assert_eq!(fields.len(), 2);
+                
+                // Check keys field: Array[K]
+                match &fields[0].field_type {
+                    Type::Generic { name, type_params } => {
+                        assert_eq!(name, "Array");
+                        assert_eq!(type_params.len(), 1);
+                        match &type_params[0] {
+                            Type::Custom(param) => assert_eq!(param, "K"),
+                            _ => panic!("Expected type parameter K"),
+                        }
+                    }
+                    _ => panic!("Expected Generic type for keys field"),
+                }
+                
+                // Check values field: Array[V]
+                match &fields[1].field_type {
+                    Type::Generic { name, type_params } => {
+                        assert_eq!(name, "Array");
+                        assert_eq!(type_params.len(), 1);
+                        match &type_params[0] {
+                            Type::Custom(param) => assert_eq!(param, "V"),
+                            _ => panic!("Expected type parameter V"),
+                        }
+                    }
+                    _ => panic!("Expected Generic type for values field"),
+                }
+            }
+            _ => panic!("Expected TypeDef statement"),
+        }
+    }
+}
