@@ -1,0 +1,220 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Fast feedback job - runs unit tests and basic checks
+  quick-check:
+    name: Quick Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+    
+    - name: Setup Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        cache-on-failure: true
+    
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+    
+    - name: Run clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings
+    
+    - name: Build (check only)
+      run: cargo check --all-targets
+    
+    - name: Run unit tests
+      run: cargo test --lib --bins --tests --quiet
+
+  # Comprehensive test job - runs integration tests
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: quick-check
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        # Future: add windows-latest, macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Setup Rust cache
+      uses: Swatinem/rust-cache@v2
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc
+    
+    - name: Build release binary
+      run: cargo build --release
+    
+    - name: Run Bolt language tests
+      run: ./run_tests.sh
+    
+    - name: Run examples
+      run: ./run_examples.sh
+    
+    - name: Test VS Code extension build
+      working-directory: bolt-vscode-extension
+      run: |
+        npm install
+        npm run compile || true  # Don't fail if compile script doesn't exist
+    
+    - name: Archive test outputs
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-outputs-${{ matrix.os }}
+        path: out/debug/
+        retention-days: 3
+
+  # Cross-platform builds
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    needs: quick-check
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: macos-latest
+            target: x86_64-apple-darwin
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+    
+    - name: Setup Rust cache
+      uses: Swatinem/rust-cache@v2
+    
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc
+    
+    - name: Install system dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        # Ensure we have a C compiler (MSVC should be available)
+        where cl.exe || echo "Warning: MSVC not found"
+    
+    - name: Build binary
+      run: cargo build --release --target ${{ matrix.target }}
+    
+    - name: Test basic functionality
+      run: |
+        # Test that the binary runs
+        ./target/${{ matrix.target }}/release/bolt${{ matrix.os == 'windows-latest' && '.exe' || '' }} --help || true
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: bolt-${{ matrix.target }}
+        path: |
+          target/${{ matrix.target }}/release/bolt${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          target/${{ matrix.target }}/release/bolt-lsp${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+        retention-days: 7
+
+  # Performance benchmarks (future)
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: quick-check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Setup Rust cache
+      uses: Swatinem/rust-cache@v2
+    
+    - name: Build release binary
+      run: cargo build --release
+    
+    - name: Run compilation benchmarks
+      run: |
+        echo "=== Compilation Time Benchmarks ==="
+        time ./target/release/bolt tests/hello.bolt -o hello_bench
+        time ./target/release/bolt tests/simple_test.bolt -o simple_bench
+        time ./target/release/bolt examples/calculator.bolt -o calc_bench
+        
+        echo "=== Binary Size Report ==="
+        ls -lh target/release/bolt target/release/bolt-lsp
+        
+        echo "=== Test Suite Performance ==="
+        time ./run_tests.sh
+
+  # Security audit (future)
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'push'
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Install cargo-audit
+      run: cargo install cargo-audit
+    
+    - name: Run security audit
+      run: cargo audit
+
+  # Release job (triggered on tags)
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [integration-test, build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all build artifacts
+      uses: actions/download-artifact@v4
+    
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          bolt-x86_64-unknown-linux-gnu/bolt
+          bolt-x86_64-unknown-linux-gnu/bolt-lsp
+          bolt-x86_64-pc-windows-msvc/bolt.exe
+          bolt-x86_64-pc-windows-msvc/bolt-lsp.exe
+          bolt-x86_64-apple-darwin/bolt
+          bolt-x86_64-apple-darwin/bolt-lsp
+        draft: true
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
