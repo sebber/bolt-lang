@@ -43,8 +43,8 @@ pub enum TokenType {
     OrOr,
     Bang,
     Dot,
-    Caret,      // ^ for pointer types and dereference
-    Ampersand,  // & for address-of
+    Caret,     // ^ for pointer types and dereference
+    Ampersand, // & for address-of
     Newline,
     Eof,
 }
@@ -79,7 +79,7 @@ impl Lexer {
 
     pub fn tokenize(&mut self) -> LexerResult<Vec<Token>> {
         let mut tokens = Vec::new();
-        
+
         while !self.is_at_end() {
             self.skip_whitespace();
             if self.is_at_end() {
@@ -102,9 +102,9 @@ impl Lexer {
     fn next_token(&mut self) -> Token {
         let line = self.line;
         let column = self.column;
-        
+
         let ch = self.current_char();
-        
+
         let token_type = match ch {
             ':' => {
                 self.advance();
@@ -175,6 +175,11 @@ impl Lexer {
                     // Handle /* */ comments
                     self.advance(); // Skip the '*'
                     self.skip_block_comment();
+                    // Recursively get the next token after skipping the comment
+                    return self.next_token();
+                } else if !self.is_at_end() && self.current_char() == '/' {
+                    // Handle // line comments
+                    self.skip_line_comment();
                     // Recursively get the next token after skipping the comment
                     return self.next_token();
                 } else {
@@ -258,7 +263,7 @@ impl Lexer {
     fn read_string(&mut self) -> TokenType {
         self.advance(); // Skip opening quote
         let mut value = String::new();
-        
+
         while !self.is_at_end() && self.current_char() != '"' {
             if self.current_char() == '\\' {
                 self.advance();
@@ -281,22 +286,24 @@ impl Lexer {
                 self.advance();
             }
         }
-        
+
         if !self.is_at_end() {
             self.advance(); // Skip closing quote
         }
-        
+
         TokenType::String(value)
     }
 
     fn read_identifier(&mut self) -> TokenType {
         let mut value = String::new();
-        
-        while !self.is_at_end() && (self.current_char().is_alphanumeric() || self.current_char() == '_') {
+
+        while !self.is_at_end()
+            && (self.current_char().is_alphanumeric() || self.current_char() == '_')
+        {
             value.push(self.current_char());
             self.advance();
         }
-        
+
         match value.as_str() {
             "var" => TokenType::Var,
             "val" => TokenType::Val,
@@ -318,12 +325,12 @@ impl Lexer {
 
     fn read_number(&mut self) -> TokenType {
         let mut value = String::new();
-        
+
         while !self.is_at_end() && self.current_char().is_numeric() {
             value.push(self.current_char());
             self.advance();
         }
-        
+
         TokenType::Integer(value.parse().unwrap())
     }
 
@@ -352,9 +359,17 @@ impl Lexer {
                 self.advance();
             }
         }
-        
+
         // If we reach here, we hit EOF without finding closing */
         // This could be handled as an error in the future
+    }
+
+    fn skip_line_comment(&mut self) {
+        // We've already consumed // so skip until end of line or EOF
+        while !self.is_at_end() && self.current_char() != '\n' {
+            self.advance();
+        }
+        // Don't advance past the newline - let normal processing handle it
     }
 
     fn current_char(&self) -> char {
@@ -388,7 +403,9 @@ mod tests {
 
     fn tokenize_string(input: &str) -> Vec<TokenType> {
         let mut lexer = Lexer::new(input.to_string());
-        lexer.tokenize().unwrap()
+        lexer
+            .tokenize()
+            .unwrap()
             .into_iter()
             .map(|token| token.token_type)
             .collect()
@@ -396,13 +413,28 @@ mod tests {
 
     #[test]
     fn test_keywords() {
-        let tokens = tokenize_string("var val fun type if else true false return for in import export from");
-        assert_eq!(tokens, vec![
-            TokenType::Var, TokenType::Val, TokenType::Fun, TokenType::Type,
-            TokenType::If, TokenType::Else, TokenType::True, TokenType::False,
-            TokenType::Return, TokenType::For, TokenType::In, TokenType::Import,
-            TokenType::Export, TokenType::From, TokenType::Eof
-        ]);
+        let tokens =
+            tokenize_string("var val fun type if else true false return for in import export from");
+        assert_eq!(
+            tokens,
+            vec![
+                TokenType::Var,
+                TokenType::Val,
+                TokenType::Fun,
+                TokenType::Type,
+                TokenType::If,
+                TokenType::Else,
+                TokenType::True,
+                TokenType::False,
+                TokenType::Return,
+                TokenType::For,
+                TokenType::In,
+                TokenType::Import,
+                TokenType::Export,
+                TokenType::From,
+                TokenType::Eof
+            ]
+        );
     }
 
     #[test]
@@ -445,44 +477,80 @@ mod tests {
     #[test]
     fn test_operators() {
         let tokens = tokenize_string(":= : = + - * / % == != < <= > >= && || ! . ^ &");
-        assert_eq!(tokens, vec![
-            TokenType::ColonEqual, TokenType::Colon, TokenType::Equal,
-            TokenType::Plus, TokenType::Minus, TokenType::Star, TokenType::Slash, TokenType::Percent,
-            TokenType::EqualEqual, TokenType::NotEqual, 
-            TokenType::Less, TokenType::LessEqual, TokenType::Greater, TokenType::GreaterEqual,
-            TokenType::AndAnd, TokenType::OrOr, TokenType::Bang, TokenType::Dot,
-            TokenType::Caret, TokenType::Ampersand, TokenType::Eof
-        ]);
+        assert_eq!(
+            tokens,
+            vec![
+                TokenType::ColonEqual,
+                TokenType::Colon,
+                TokenType::Equal,
+                TokenType::Plus,
+                TokenType::Minus,
+                TokenType::Star,
+                TokenType::Slash,
+                TokenType::Percent,
+                TokenType::EqualEqual,
+                TokenType::NotEqual,
+                TokenType::Less,
+                TokenType::LessEqual,
+                TokenType::Greater,
+                TokenType::GreaterEqual,
+                TokenType::AndAnd,
+                TokenType::OrOr,
+                TokenType::Bang,
+                TokenType::Dot,
+                TokenType::Caret,
+                TokenType::Ampersand,
+                TokenType::Eof
+            ]
+        );
     }
 
     #[test]
     fn test_punctuation() {
         let tokens = tokenize_string("{ } ( ) [ ] , ;");
-        assert_eq!(tokens, vec![
-            TokenType::LeftBrace, TokenType::RightBrace,
-            TokenType::LeftParen, TokenType::RightParen,
-            TokenType::LeftBracket, TokenType::RightBracket,
-            TokenType::Comma, TokenType::Semicolon,
-            TokenType::Eof
-        ]);
+        assert_eq!(
+            tokens,
+            vec![
+                TokenType::LeftBrace,
+                TokenType::RightBrace,
+                TokenType::LeftParen,
+                TokenType::RightParen,
+                TokenType::LeftBracket,
+                TokenType::RightBracket,
+                TokenType::Comma,
+                TokenType::Semicolon,
+                TokenType::Eof
+            ]
+        );
     }
 
-    #[test] 
+    #[test]
     fn test_comments() {
         let tokens = tokenize_string("var/*comment*/x");
-        assert_eq!(tokens, vec![
-            TokenType::Var, TokenType::Identifier("x".to_string()), TokenType::Eof
-        ]);
+        assert_eq!(
+            tokens,
+            vec![
+                TokenType::Var,
+                TokenType::Identifier("x".to_string()),
+                TokenType::Eof
+            ]
+        );
     }
 
     #[test]
     fn test_whitespace_handling() {
         let tokens = tokenize_string("  var   x  \n  :=   42  ");
-        assert_eq!(tokens, vec![
-            TokenType::Var, TokenType::Identifier("x".to_string()),
-            TokenType::Newline, TokenType::ColonEqual, TokenType::Integer(42),
-            TokenType::Eof
-        ]);
+        assert_eq!(
+            tokens,
+            vec![
+                TokenType::Var,
+                TokenType::Identifier("x".to_string()),
+                TokenType::Newline,
+                TokenType::ColonEqual,
+                TokenType::Integer(42),
+                TokenType::Eof
+            ]
+        );
     }
 
     #[test]
@@ -495,7 +563,7 @@ mod tests {
             }
         "#;
         let tokens = tokenize_string(code);
-        
+
         // Should contain: val, identifier, :=, string, newline, var, identifier, :, etc.
         assert!(tokens.len() > 10);
         assert!(matches!(tokens[0], TokenType::Newline)); // Leading newline
@@ -509,7 +577,7 @@ mod tests {
     fn test_line_and_column_tracking() {
         let mut lexer = Lexer::new("line1\nline2\nline3".to_string());
         let tokens = lexer.tokenize().unwrap();
-        
+
         // Check that tokens have proper line/column info
         assert!(tokens.iter().all(|t| t.line >= 1));
         assert!(tokens.iter().all(|t| t.column >= 1));
@@ -518,9 +586,7 @@ mod tests {
     #[test]
     fn test_error_handling() {
         // Test that invalid characters are handled (should panic for now)
-        let result = std::panic::catch_unwind(|| {
-            tokenize_string("@#$%")
-        });
+        let result = std::panic::catch_unwind(|| tokenize_string("@#$%"));
         assert!(result.is_err());
     }
 }
