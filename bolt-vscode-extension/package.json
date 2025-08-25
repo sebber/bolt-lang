@@ -1,8 +1,8 @@
 {
   "name": "bolt-language",
   "displayName": "Bolt Language",
-  "description": "Syntax highlighting and IntelliSense for the Bolt programming language with generic types support",
-  "version": "0.3.0",
+  "description": "Syntax highlighting and IntelliSense for the Bolt programming language with native C modules, file I/O, and string utilities",
+  "version": "0.4.0",
   "publisher": "bolt-lang",
   "engines": {
     "vscode": "^1.60.0"
@@ -17,7 +17,10 @@
     "arrays",
     "typescript-inspired",
     "compiled",
-    "systems programming"
+    "systems programming",
+    "native modules",
+    "file io",
+    "string utilities"
   ],
   "repository": {
     "type": "git",

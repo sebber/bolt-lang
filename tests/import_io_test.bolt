@@ -1,0 +1,13 @@
+import { print } from "bolt:stdio"
+import { readFile, writeFile } from "bolt:io"
+
+fun main(): Integer {
+    val success := writeFile("test.txt", "Hello from native functions!")
+    if (success) {
+        print("File written successfully")
+        val content := readFile("test.txt")
+        print("File content:")
+        print(content)
+    }
+    return 0
+}
