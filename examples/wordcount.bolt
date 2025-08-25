@@ -1,0 +1,50 @@
+// Target application: Command-line word counter
+// This demonstrates the minimum features needed for practical programming
+
+import { readFile, println, print } from "bolt:io"
+import { getArgs } from "bolt:env" 
+import { len, split, trim } from "bolt:string"
+import { toString } from "bolt:convert"
+
+fun main() {
+    val args := getArgs()
+    
+    // Need array length property
+    if args.length < 2 {
+        println("Usage: wordcount <filename>")
+        return
+    }
+    
+    val filename := args[1]
+    
+    // Need file I/O with error handling
+    val content := readFile(filename)  // Should return Option<String>
+    if content.isNone() {
+        println("Error: Could not read file " + filename)
+        return
+    }
+    
+    val text := content.unwrap()
+    val lines := split(text, "\n")
+    val words := split(text, " ")
+    
+    // Filter out empty strings
+    var wordCount := 0
+    var charCount := 0
+    
+    // Need enhanced for loops with counting
+    for word in words {
+        val trimmed := trim(word)
+        if trimmed.length > 0 {
+            wordCount = wordCount + 1
+        }
+    }
+    
+    charCount = text.length
+    val lineCount := lines.length
+    
+    // Need number to string conversion for output
+    print("Lines: " + toString(lineCount))
+    print("Words: " + toString(wordCount))  
+    print("Characters: " + toString(charCount))
+}

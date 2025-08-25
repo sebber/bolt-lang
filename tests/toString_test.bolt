@@ -1,0 +1,14 @@
+import { print } from "bolt:stdio"
+
+fun main() {
+    // Integer to string conversion  
+    val number := 42
+    val numberStr := toString(number)
+    print(numberStr)
+    
+    // Direct conversion
+    print(toString(123))
+    
+    // Zero conversion
+    print(toString(0))
+}

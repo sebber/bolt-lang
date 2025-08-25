@@ -32,6 +32,7 @@ pub struct CCodeGen {
     main_code: String,
     symbol_table: SymbolTable,
     has_user_main: bool, // Track if user defined a main function
+    array_lengths: HashMap<String, usize>, // Track array lengths for .length property
     // Monomorphization state
     generic_types: HashMap<String, (Vec<String>, Vec<Field>)>, // base_name -> (type_params, fields)
     required_monomorphs: HashSet<MonomorphicType>, // Track which concrete types are needed
@@ -46,6 +47,7 @@ impl CCodeGen {
             main_code: String::new(),
             symbol_table: SymbolTable::new(),
             has_user_main: false,
+            array_lengths: HashMap::new(),
             generic_types: HashMap::new(),
             required_monomorphs: HashSet::new(),
             generated_monomorphs: HashMap::new(),
@@ -60,6 +62,7 @@ impl CCodeGen {
             main_code: String::new(),
             symbol_table,
             has_user_main: false,
+            array_lengths: HashMap::new(),
             generic_types: HashMap::new(),
             required_monomorphs: HashSet::new(),
             generated_monomorphs: HashMap::new(),
@@ -367,6 +370,27 @@ impl CCodeGen {
         result.push_str("    return result;\n");
         result.push_str("}\n\n");
 
+        // Helper function for integer to string conversion
+        result.push_str("char* toString(int value) {\n");
+        result.push_str("    char* result = malloc(32); // enough for any 32-bit int\n");
+        result.push_str("    snprintf(result, 32, \"%d\", value);\n");
+        result.push_str("    return result;\n");
+        result.push_str("}\n\n");
+        
+        // Global variables for command line arguments
+        result.push_str("int bolt_argc;\n");
+        result.push_str("char** bolt_argv;\n\n");
+        
+        // Helper functions for command line arguments
+        result.push_str("char** getArgs() {\n");
+        result.push_str("    return bolt_argv;\n");
+        result.push_str("}\n\n");
+        result.push_str("int getArgsLength() {\n");
+        result.push_str("    return bolt_argc;\n");
+        result.push_str("}\n\n");
+
+        // Compile functions from all modules first
+
         // Pass 1: Collect type definitions and analyze usage
         let mut remaining_statements = Vec::new();
         for statement in program.statements {
@@ -410,13 +434,17 @@ impl CCodeGen {
         // Add main function
         if self.has_user_main {
             // User defined main function exists, create wrapper that calls it
-            result.push_str("int main() {\n");
+            result.push_str("int main(int argc, char* argv[]) {\n");
+            result.push_str("    bolt_argc = argc;\n");
+            result.push_str("    bolt_argv = argv;\n");
             result.push_str("    bolt_main();\n");
             result.push_str("    return 0;\n");
             result.push_str("}\n");
         } else {
             // No user main function, put top-level code in main
-            result.push_str("int main() {\n");
+            result.push_str("int main(int argc, char* argv[]) {\n");
+            result.push_str("    bolt_argc = argc;\n");
+            result.push_str("    bolt_argv = argv;\n");
             result.push_str(&self.main_code);
             result.push_str("    return 0;\n");
             result.push_str("}\n");
@@ -443,6 +471,25 @@ impl CCodeGen {
         result.push_str("    strcpy(result, str1);\n");
         result.push_str("    strcat(result, str2);\n");
         result.push_str("    return result;\n");
+        result.push_str("}\n\n");
+
+        // Helper function for integer to string conversion
+        result.push_str("char* toString(int value) {\n");
+        result.push_str("    char* result = malloc(32); // enough for any 32-bit int\n");
+        result.push_str("    snprintf(result, 32, \"%d\", value);\n");
+        result.push_str("    return result;\n");
+        result.push_str("}\n\n");
+        
+        // Global variables for command line arguments
+        result.push_str("int bolt_argc;\n");
+        result.push_str("char** bolt_argv;\n\n");
+        
+        // Helper functions for command line arguments
+        result.push_str("char** getArgs() {\n");
+        result.push_str("    return bolt_argv;\n");
+        result.push_str("}\n\n");
+        result.push_str("int getArgsLength() {\n");
+        result.push_str("    return bolt_argc;\n");
         result.push_str("}\n\n");
 
         // Compile functions from all modules first
@@ -495,13 +542,17 @@ impl CCodeGen {
         // Add main function
         if self.has_user_main {
             // User defined main function exists, create wrapper that calls it
-            result.push_str("int main() {\n");
+            result.push_str("int main(int argc, char* argv[]) {\n");
+            result.push_str("    bolt_argc = argc;\n");
+            result.push_str("    bolt_argv = argv;\n");
             result.push_str("    bolt_main();\n");
             result.push_str("    return 0;\n");
             result.push_str("}\n");
         } else {
             // No user main function, put top-level code in main
-            result.push_str("int main() {\n");
+            result.push_str("int main(int argc, char* argv[]) {\n");
+            result.push_str("    bolt_argc = argc;\n");
+            result.push_str("    bolt_argv = argv;\n");
             result.push_str(&self.main_code);
             result.push_str("    return 0;\n");
             result.push_str("}\n");
@@ -556,9 +607,20 @@ impl CCodeGen {
                                 name: func_name.clone(),
                                 args: args.clone(),
                             });
-                        self.main_code
-                            .push_str(&format!("    int {} = {};\n", name, call_str));
-                        self.variables.insert(name, "int".to_string()); // assume int for now
+                        // Check if this is toString function call
+                        if func_name == "toString" {
+                            self.main_code
+                                .push_str(&format!("    char* {} = {};\n", name, call_str));
+                            self.variables.insert(name, "string".to_string());
+                        } else if func_name == "getArgs" {
+                            self.main_code
+                                .push_str(&format!("    char** {} = {};\n", name, call_str));
+                            self.variables.insert(name, "getargs".to_string());
+                        } else {
+                            self.main_code
+                                .push_str(&format!("    int {} = {};\n", name, call_str));
+                            self.variables.insert(name, "int".to_string()); // assume int for now
+                        }
                     }
                     Expression::NamespacedFunctionCall {
                         namespace,
@@ -571,13 +633,25 @@ impl CCodeGen {
                                 function: function.clone(),
                                 args: args.clone(),
                             });
-                        self.main_code
-                            .push_str(&format!("    int {} = {};\n", name, call_str));
-                        self.variables.insert(name, "int".to_string()); // assume int for now
+                        // Check if this is toString function call
+                        if function == "toString" {
+                            self.main_code
+                                .push_str(&format!("    char* {} = {};\n", name, call_str));
+                            self.variables.insert(name, "string".to_string());
+                        } else if function == "getArgs" {
+                            self.main_code
+                                .push_str(&format!("    char** {} = {};\n", name, call_str));
+                            self.variables.insert(name, "getargs".to_string());
+                        } else {
+                            self.main_code
+                                .push_str(&format!("    int {} = {};\n", name, call_str));
+                            self.variables.insert(name, "int".to_string()); // assume int for now
+                        }
                     }
                     Expression::ArrayLiteral(elements) => {
                         // For now, assume integer arrays
-                        let _size = elements.len();
+                        let size = elements.len();
+                        self.array_lengths.insert(name.clone(), size); // Store array length
                         self.main_code.push_str(&format!("    int {}[] = {{", name));
 
                         for (i, element) in elements.iter().enumerate() {
@@ -712,9 +786,20 @@ impl CCodeGen {
                                 name: func_name.clone(),
                                 args: args.clone(),
                             });
-                        self.main_code
-                            .push_str(&format!("    int {} = {};\n", name, call_str));
-                        self.variables.insert(name, "int".to_string()); // assume int for now
+                        // Check if this is toString function call
+                        if func_name == "toString" {
+                            self.main_code
+                                .push_str(&format!("    char* {} = {};\n", name, call_str));
+                            self.variables.insert(name, "string".to_string());
+                        } else if func_name == "getArgs" {
+                            self.main_code
+                                .push_str(&format!("    char** {} = {};\n", name, call_str));
+                            self.variables.insert(name, "getargs".to_string());
+                        } else {
+                            self.main_code
+                                .push_str(&format!("    int {} = {};\n", name, call_str));
+                            self.variables.insert(name, "int".to_string()); // assume int for now
+                        }
                     }
                     Expression::NamespacedFunctionCall {
                         namespace,
@@ -727,13 +812,25 @@ impl CCodeGen {
                                 function: function.clone(),
                                 args: args.clone(),
                             });
-                        self.main_code
-                            .push_str(&format!("    int {} = {};\n", name, call_str));
-                        self.variables.insert(name, "int".to_string()); // assume int for now
+                        // Check if this is toString function call
+                        if function == "toString" {
+                            self.main_code
+                                .push_str(&format!("    char* {} = {};\n", name, call_str));
+                            self.variables.insert(name, "string".to_string());
+                        } else if function == "getArgs" {
+                            self.main_code
+                                .push_str(&format!("    char** {} = {};\n", name, call_str));
+                            self.variables.insert(name, "getargs".to_string());
+                        } else {
+                            self.main_code
+                                .push_str(&format!("    int {} = {};\n", name, call_str));
+                            self.variables.insert(name, "int".to_string()); // assume int for now
+                        }
                     }
                     Expression::ArrayLiteral(elements) => {
                         // For now, assume integer arrays
-                        let _size = elements.len();
+                        let size = elements.len();
+                        self.array_lengths.insert(name.clone(), size); // Store array length
                         self.main_code.push_str(&format!("    int {}[] = {{", name));
 
                         for (i, element) in elements.iter().enumerate() {
@@ -964,6 +1061,20 @@ impl CCodeGen {
 
                             self.variables
                                 .insert(variable.clone(), element_type.to_string());
+                        } else if array_type == "getargs" {
+                            // Special handling for getArgs array (char**)
+                            self.main_code.push_str(&format!(
+                                "    for (int {} = 0; {} < getArgsLength(); {}++) {{\n",
+                                loop_var, loop_var, loop_var
+                            ));
+
+                            // Declare loop variable as char*
+                            self.main_code.push_str(&format!(
+                                "        char* {} = {}[{}];\n",
+                                variable, array_name, loop_var
+                            ));
+
+                            self.variables.insert(variable.clone(), "string".to_string());
                         } else {
                             // For regular arrays, use sizeof
                             let size_name = format!("_size_of_{}", array_name);
@@ -1405,7 +1516,13 @@ impl CCodeGen {
             Expression::Identifier(name) => name,
             Expression::FunctionCall { name, args } => {
                 // Handle stdlib functions specially
-                if name == "print" && args.len() == 1 {
+                if name == "toString" && args.len() == 1 {
+                    let arg = args.into_iter().next().unwrap();
+                    let arg_str = self.compile_expression_to_string(arg);
+                    format!("toString({})", arg_str)
+                } else if name == "getArgs" && args.is_empty() {
+                    "getArgs()".to_string()
+                } else if name == "print" && args.len() == 1 {
                     let arg = args.into_iter().next().unwrap();
                     match arg {
                         Expression::StringLiteral(s) => {
@@ -1434,10 +1551,11 @@ impl CCodeGen {
                             }
                         }
                         Expression::FieldAccess { object, field } => {
-                            let field_access_str = format!(
-                                "{}.{}",
-                                self.compile_expression_to_string(*object.clone()),
-                                field
+                            let field_access_str = self.compile_expression_to_string(
+                                Expression::FieldAccess { 
+                                    object: object.clone(), 
+                                    field: field.clone() 
+                                }
                             );
 
                             // Heuristic: detect field types by name patterns
@@ -1462,6 +1580,13 @@ impl CCodeGen {
                             }
                         }
                         _ => {
+                            // Check if this is a toString function call
+                            if let Expression::FunctionCall { name, .. } = &arg {
+                                if name == "toString" {
+                                    let arg_str = self.compile_expression_to_string(arg);
+                                    return format!("printf(\"%s\\n\", {})", arg_str);
+                                }
+                            }
                             let arg_str = self.compile_expression_to_string(arg);
                             format!("printf(\"%d\\n\", {})", arg_str) // default to int for expressions
                         }
@@ -1513,10 +1638,11 @@ impl CCodeGen {
                             }
                         }
                         Expression::FieldAccess { object, field } => {
-                            let field_access_str = format!(
-                                "{}.{}",
-                                self.compile_expression_to_string(*object.clone()),
-                                field
+                            let field_access_str = self.compile_expression_to_string(
+                                Expression::FieldAccess { 
+                                    object: object.clone(), 
+                                    field: field.clone() 
+                                }
                             );
 
                             // Heuristic: detect field types by name patterns
@@ -1541,6 +1667,13 @@ impl CCodeGen {
                             }
                         }
                         _ => {
+                            // Check if this is a toString function call
+                            if let Expression::FunctionCall { name, .. } = &arg {
+                                if name == "toString" {
+                                    let arg_str = self.compile_expression_to_string(arg);
+                                    return format!("printf(\"%s\\n\", {})", arg_str);
+                                }
+                            }
                             let arg_str = self.compile_expression_to_string(arg);
                             format!("printf(\"%d\\n\", {})", arg_str) // default to int for expressions
                         }
@@ -1642,7 +1775,33 @@ impl CCodeGen {
                 struct_str
             }
             Expression::FieldAccess { object, field } => {
-                let object_str = self.compile_expression_to_string(*object);
+                let object_str = self.compile_expression_to_string(*object.clone());
+                
+                // Special handling for .length property
+                if field == "length" {
+                    // Check if this is accessing length on a known identifier
+                    if let Expression::Identifier(var_name) = object.as_ref() {
+                        // Check if it's an array with known length
+                        if let Some(&array_len) = self.array_lengths.get(var_name) {
+                            return array_len.to_string();
+                        }
+                        // Check if it's a string variable
+                        if let Some(var_type) = self.variables.get(var_name) {
+                            if var_type == "char*" || var_type == "string" {
+                                return format!("strlen({})", object_str);
+                            } else if var_type == "getargs" {
+                                // Check if this is the getArgs array
+                                return "getArgsLength()".to_string();
+                            }
+                        }
+                    }
+                    // For string literals, calculate length at compile time
+                    if let Expression::StringLiteral(ref string_val) = object.as_ref() {
+                        return string_val.len().to_string();
+                    }
+                }
+                
+                // Default struct field access
                 format!("{}.{}", object_str, field)
             }
             Expression::ArrayAccess { array, index } => {
@@ -1660,5 +1819,217 @@ impl CCodeGen {
             }
             _ => "0".to_string(), // fallback
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ast::{Expression, Statement, Program, Type};
+    use std::collections::HashMap;
+
+    fn setup_codegen() -> CCodeGen {
+        CCodeGen::new()
+    }
+
+    #[test]
+    fn test_getargs_function_call() {
+        let mut codegen = setup_codegen();
+        
+        let expr = Expression::FunctionCall {
+            name: "getArgs".to_string(),
+            args: vec![],
+        };
+        
+        let result = codegen.compile_expression_to_string(expr);
+        assert_eq!(result, "getArgs()");
+    }
+
+    #[test] 
+    fn test_tostring_function_call() {
+        let mut codegen = setup_codegen();
+        
+        let expr = Expression::FunctionCall {
+            name: "toString".to_string(),
+            args: vec![Expression::IntegerLiteral(42)],
+        };
+        
+        let result = codegen.compile_expression_to_string(expr);
+        assert_eq!(result, "toString(42)");
+    }
+
+    #[test]
+    fn test_getargs_length_property() {
+        let mut codegen = setup_codegen();
+        // Register getArgs as getargs type 
+        codegen.variables.insert("args".to_string(), "getargs".to_string());
+        
+        let expr = Expression::FieldAccess {
+            object: Box::new(Expression::Identifier("args".to_string())),
+            field: "length".to_string(),
+        };
+        
+        let result = codegen.compile_expression_to_string(expr);
+        assert_eq!(result, "getArgsLength()");
+    }
+
+    #[test]
+    fn test_array_length_property() {
+        let mut codegen = setup_codegen();
+        // Register array with known length
+        codegen.array_lengths.insert("numbers".to_string(), 5);
+        
+        let expr = Expression::FieldAccess {
+            object: Box::new(Expression::Identifier("numbers".to_string())),
+            field: "length".to_string(),
+        };
+        
+        let result = codegen.compile_expression_to_string(expr);
+        assert_eq!(result, "5");
+    }
+
+    #[test]
+    fn test_string_length_property() {
+        let mut codegen = setup_codegen();
+        // Register string variable
+        codegen.variables.insert("name".to_string(), "string".to_string());
+        
+        let expr = Expression::FieldAccess {
+            object: Box::new(Expression::Identifier("name".to_string())),
+            field: "length".to_string(),
+        };
+        
+        let result = codegen.compile_expression_to_string(expr);
+        assert_eq!(result, "strlen(name)");
+    }
+
+    #[test]
+    fn test_string_literal_length() {
+        let mut codegen = setup_codegen();
+        
+        let expr = Expression::FieldAccess {
+            object: Box::new(Expression::StringLiteral("hello".to_string())),
+            field: "length".to_string(),
+        };
+        
+        let result = codegen.compile_expression_to_string(expr);
+        assert_eq!(result, "5");
+    }
+
+    #[test]
+    fn test_compile_program_includes_getargs_helpers() {
+        let mut codegen = setup_codegen();
+        let program = Program {
+            statements: vec![],
+        };
+        
+        let result = codegen.compile_program(program);
+        
+        // Check that helper functions are included
+        assert!(result.contains("int bolt_argc;"));
+        assert!(result.contains("char** bolt_argv;"));
+        assert!(result.contains("char** getArgs() {"));
+        assert!(result.contains("int getArgsLength() {"));
+        assert!(result.contains("return bolt_argv;"));
+        assert!(result.contains("return bolt_argc;"));
+    }
+
+    #[test]
+    fn test_main_function_sets_globals() {
+        let mut codegen = setup_codegen();
+        let program = Program {
+            statements: vec![],
+        };
+        
+        let result = codegen.compile_program(program);
+        
+        // Check that main function sets global variables
+        assert!(result.contains("int main(int argc, char* argv[]) {"));
+        assert!(result.contains("bolt_argc = argc;"));
+        assert!(result.contains("bolt_argv = argv;"));
+    }
+
+    #[test]
+    fn test_getargs_variable_type_tracking() {
+        let mut codegen = setup_codegen();
+        
+        let val_decl = Statement::ValDecl {
+            name: "args".to_string(),
+            type_annotation: None,
+            value: Expression::FunctionCall {
+                name: "getArgs".to_string(),
+                args: vec![],
+            },
+        };
+        
+        codegen.compile_main_statement(val_decl);
+        
+        // Check that getArgs result is tracked as getargs type
+        assert_eq!(codegen.variables.get("args"), Some(&"getargs".to_string()));
+        assert!(codegen.main_code.contains("char** args = getArgs();"));
+    }
+
+    #[test]
+    fn test_for_in_getargs_compilation() {
+        let mut codegen = setup_codegen();
+        // First declare args variable
+        codegen.variables.insert("args".to_string(), "getargs".to_string());
+        
+        let for_in = Statement::ForIn {
+            variable: "arg".to_string(),
+            iterable: Expression::Identifier("args".to_string()),
+            body: vec![
+                Statement::Expression(Expression::NamespacedFunctionCall {
+                    namespace: "stdio".to_string(),
+                    function: "print".to_string(),
+                    args: vec![Expression::Identifier("arg".to_string())],
+                }),
+            ],
+        };
+        
+        codegen.compile_main_statement(for_in);
+        
+        // Check for-in loop with getArgsLength()
+        assert!(codegen.main_code.contains("getArgsLength()"));
+        assert!(codegen.main_code.contains("char* arg = args["));
+        assert!(codegen.main_code.contains("printf(\"%s\\n\", arg);"));
+    }
+
+    #[test]
+    fn test_toString_variable_type_tracking() {
+        let mut codegen = setup_codegen();
+        
+        let val_decl = Statement::ValDecl {
+            name: "numStr".to_string(),
+            type_annotation: None,
+            value: Expression::FunctionCall {
+                name: "toString".to_string(),
+                args: vec![Expression::IntegerLiteral(42)],
+            },
+        };
+        
+        codegen.compile_main_statement(val_decl);
+        
+        // Check that toString result is tracked as string type
+        assert_eq!(codegen.variables.get("numStr"), Some(&"string".to_string()));
+        assert!(codegen.main_code.contains("char* numStr = toString(42);"));
+    }
+
+    #[test]
+    fn test_nested_length_property() {
+        let mut codegen = setup_codegen();
+        codegen.variables.insert("args".to_string(), "getargs".to_string());
+        
+        // Test toString(args.length)
+        let expr = Expression::FunctionCall {
+            name: "toString".to_string(),
+            args: vec![Expression::FieldAccess {
+                object: Box::new(Expression::Identifier("args".to_string())),
+                field: "length".to_string(),
+            }],
+        };
+        
+        let result = codegen.compile_expression_to_string(expr);
+        assert_eq!(result, "toString(getArgsLength())");
     }
 }

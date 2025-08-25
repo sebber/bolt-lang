@@ -1,0 +1,12 @@
+Basic toString:
+42
+0
+9999
+Variable toString:
+123
+Expression toString:
+15
+Array length toString:
+3
+Chained toString:
+3

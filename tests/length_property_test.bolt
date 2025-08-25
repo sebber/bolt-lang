@@ -1,0 +1,28 @@
+import { print } from "bolt:stdio"
+
+fun main() {
+    // Test string literal length
+    print("String literal length:")
+    print(toString("hello".length))
+    
+    // Test array literal length
+    val numbers := [1, 2, 3, 4, 5]
+    print("Array length:")
+    print(toString(numbers.length))
+    
+    // Test string variable length
+    val greeting := "Hello, World!"
+    print("String variable length:")
+    print(toString(greeting.length))
+    
+    // Test empty array length
+    val empty := []
+    print("Empty array length:")
+    print(toString(empty.length))
+    
+    // Test nested length access
+    val name := "Bolt"
+    val lengthStr := toString(name.length)
+    print("Nested length:")
+    print(lengthStr)
+}

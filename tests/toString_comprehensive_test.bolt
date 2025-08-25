@@ -1,0 +1,29 @@
+import { print } from "bolt:stdio"
+
+fun main() {
+    // Test basic toString
+    print("Basic toString:")
+    print(toString(42))
+    print(toString(0))
+    print(toString(9999))
+    
+    // Test toString with variables
+    val number := 123
+    print("Variable toString:")
+    print(toString(number))
+    
+    // Test toString with expressions
+    val sum := 10 + 5
+    print("Expression toString:")
+    print(toString(sum))
+    
+    // Test toString with array length
+    val items := [1, 2, 3]
+    print("Array length toString:")
+    print(toString(items.length))
+    
+    // Test toString chaining
+    val count := toString(items.length)
+    print("Chained toString:")
+    print(count)
+}
