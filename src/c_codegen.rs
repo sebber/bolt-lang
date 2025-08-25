@@ -32,7 +32,6 @@ pub struct CCodeGen {
     variables: HashMap<String, String>,
     functions: Vec<String>,
     main_code: String,
-    symbol_table: SymbolTable,
     has_user_main: bool, // Track if user defined a main function
     array_lengths: HashMap<String, usize>, // Track array lengths for .length property
     // Monomorphization state
@@ -43,13 +42,18 @@ pub struct CCodeGen {
     pub required_libraries: HashSet<String>, // Track libraries needed for linking
 }
 
+impl Default for CCodeGen {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CCodeGen {
     pub fn new() -> Self {
         Self {
             variables: HashMap::new(),
             functions: Vec::new(),
             main_code: String::new(),
-            symbol_table: SymbolTable::new(),
             has_user_main: false,
             array_lengths: HashMap::new(),
             generic_types: HashMap::new(),
@@ -65,7 +69,6 @@ impl CCodeGen {
             variables,
             functions: Vec::new(),
             main_code: String::new(),
-            symbol_table,
             has_user_main: false,
             array_lengths: HashMap::new(),
             generic_types: HashMap::new(),
@@ -1154,9 +1157,9 @@ impl CCodeGen {
                                 "char*"
                             } else if array_type.contains("Array_Bool") {
                                 "int" // bool as int
-                            } else if array_type.starts_with("Array_") {
+                            } else if let Some(stripped) = array_type.strip_prefix("Array_") {
                                 // Custom type like Array_Person -> Person
-                                &array_type[6..] // Remove "Array_" prefix
+                                stripped // Remove "Array_" prefix
                             } else {
                                 "int" // default
                             };
@@ -1243,9 +1246,11 @@ impl CCodeGen {
                                             "char*"
                                         } else if array_type.contains("Array_Bool") {
                                             "int" // bool as int
-                                        } else if array_type.starts_with("Array_") {
+                                        } else if let Some(stripped) =
+                                            array_type.strip_prefix("Array_")
+                                        {
                                             // Custom type like Array_Person -> Person
-                                            &array_type[6..] // Remove "Array_" prefix
+                                            stripped // Remove "Array_" prefix
                                         } else {
                                             "int" // default
                                         };
@@ -2077,7 +2082,7 @@ impl CCodeGen {
                                     if i > 0 {
                                         result.push_str(", ");
                                     }
-                                    result.push_str(&self.param_to_c_type(&param.param_type));
+                                    result.push_str(self.param_to_c_type(&param.param_type));
                                     result.push_str(&format!(" {}", param.name));
                                 }
                                 result.push_str(") {\n");
@@ -2090,7 +2095,7 @@ impl CCodeGen {
                                     if i > 0 {
                                         result.push_str(", ");
                                     }
-                                    result.push_str(&self.param_to_c_type(&param.param_type));
+                                    result.push_str(self.param_to_c_type(&param.param_type));
                                     result.push_str(&format!(" {}", param.name));
                                 }
                                 result.push_str(") {\n");
@@ -2103,7 +2108,7 @@ impl CCodeGen {
                                     if i > 0 {
                                         result.push_str(", ");
                                     }
-                                    result.push_str(&self.param_to_c_type(&param.param_type));
+                                    result.push_str(self.param_to_c_type(&param.param_type));
                                     result.push_str(&format!(" {}", param.name));
                                 }
                                 result.push_str(") {\n");
@@ -2117,7 +2122,7 @@ impl CCodeGen {
                                     if i > 0 {
                                         result.push_str(", ");
                                     }
-                                    result.push_str(&self.param_to_c_type(&param.param_type));
+                                    result.push_str(self.param_to_c_type(&param.param_type));
                                     result.push_str(&format!(" {}", param.name));
                                 }
                                 result.push_str(") {\n");
@@ -2132,7 +2137,7 @@ impl CCodeGen {
                             if i > 0 {
                                 result.push_str(", ");
                             }
-                            result.push_str(&self.param_to_c_type(&param.param_type));
+                            result.push_str(self.param_to_c_type(&param.param_type));
                             result.push_str(&format!(" {}", param.name));
                         }
                         result.push_str(") {\n");
@@ -2238,7 +2243,7 @@ impl CCodeGen {
                                 if i > 0 {
                                     result.push_str(", ");
                                 }
-                                result.push_str(&self.param_to_c_type(&param.param_type));
+                                result.push_str(self.param_to_c_type(&param.param_type));
                                 result.push_str(&format!(" {}", param.name));
                             }
                             result.push_str(") {\n");
@@ -2251,7 +2256,7 @@ impl CCodeGen {
                                 if i > 0 {
                                     result.push_str(", ");
                                 }
-                                result.push_str(&self.param_to_c_type(&param.param_type));
+                                result.push_str(self.param_to_c_type(&param.param_type));
                                 result.push_str(&format!(" {}", param.name));
                             }
                             result.push_str(") {\n");
@@ -2264,7 +2269,7 @@ impl CCodeGen {
                                 if i > 0 {
                                     result.push_str(", ");
                                 }
-                                result.push_str(&self.param_to_c_type(&param.param_type));
+                                result.push_str(self.param_to_c_type(&param.param_type));
                                 result.push_str(&format!(" {}", param.name));
                             }
                             result.push_str(") {\n");
@@ -2278,7 +2283,7 @@ impl CCodeGen {
                                 if i > 0 {
                                     result.push_str(", ");
                                 }
-                                result.push_str(&self.param_to_c_type(&param.param_type));
+                                result.push_str(self.param_to_c_type(&param.param_type));
                                 result.push_str(&format!(" {}", param.name));
                             }
                             result.push_str(") {\n");
@@ -2293,7 +2298,7 @@ impl CCodeGen {
                         if i > 0 {
                             result.push_str(", ");
                         }
-                        result.push_str(&self.param_to_c_type(&param.param_type));
+                        result.push_str(self.param_to_c_type(&param.param_type));
                         result.push_str(&format!(" {}", param.name));
                     }
                     result.push_str(") {\n");
@@ -2345,7 +2350,7 @@ impl CCodeGen {
             result.push_str(");\n");
         }
 
-        result.push_str("\n");
+        result.push('\n');
     }
 }
 

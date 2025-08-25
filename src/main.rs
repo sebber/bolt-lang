@@ -1,6 +1,5 @@
 mod ast;
 mod c_codegen;
-mod codegen;
 mod error;
 mod lexer;
 mod module;
