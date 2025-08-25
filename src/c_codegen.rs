@@ -376,11 +376,11 @@ impl CCodeGen {
         result.push_str("    snprintf(result, 32, \"%d\", value);\n");
         result.push_str("    return result;\n");
         result.push_str("}\n\n");
-        
+
         // Global variables for command line arguments
         result.push_str("int bolt_argc;\n");
         result.push_str("char** bolt_argv;\n\n");
-        
+
         // Helper functions for command line arguments
         result.push_str("char** getArgs() {\n");
         result.push_str("    return bolt_argv;\n");
@@ -479,11 +479,11 @@ impl CCodeGen {
         result.push_str("    snprintf(result, 32, \"%d\", value);\n");
         result.push_str("    return result;\n");
         result.push_str("}\n\n");
-        
+
         // Global variables for command line arguments
         result.push_str("int bolt_argc;\n");
         result.push_str("char** bolt_argv;\n\n");
-        
+
         // Helper functions for command line arguments
         result.push_str("char** getArgs() {\n");
         result.push_str("    return bolt_argv;\n");
@@ -1074,7 +1074,8 @@ impl CCodeGen {
                                 variable, array_name, loop_var
                             ));
 
-                            self.variables.insert(variable.clone(), "string".to_string());
+                            self.variables
+                                .insert(variable.clone(), "string".to_string());
                         } else {
                             // For regular arrays, use sizeof
                             let size_name = format!("_size_of_{}", array_name);
@@ -1551,12 +1552,11 @@ impl CCodeGen {
                             }
                         }
                         Expression::FieldAccess { object, field } => {
-                            let field_access_str = self.compile_expression_to_string(
-                                Expression::FieldAccess { 
-                                    object: object.clone(), 
-                                    field: field.clone() 
-                                }
-                            );
+                            let field_access_str =
+                                self.compile_expression_to_string(Expression::FieldAccess {
+                                    object: object.clone(),
+                                    field: field.clone(),
+                                });
 
                             // Heuristic: detect field types by name patterns
                             // TODO: Implement proper type tracking for struct fields
@@ -1638,12 +1638,11 @@ impl CCodeGen {
                             }
                         }
                         Expression::FieldAccess { object, field } => {
-                            let field_access_str = self.compile_expression_to_string(
-                                Expression::FieldAccess { 
-                                    object: object.clone(), 
-                                    field: field.clone() 
-                                }
-                            );
+                            let field_access_str =
+                                self.compile_expression_to_string(Expression::FieldAccess {
+                                    object: object.clone(),
+                                    field: field.clone(),
+                                });
 
                             // Heuristic: detect field types by name patterns
                             // TODO: Implement proper type tracking for struct fields
@@ -1776,7 +1775,7 @@ impl CCodeGen {
             }
             Expression::FieldAccess { object, field } => {
                 let object_str = self.compile_expression_to_string(*object.clone());
-                
+
                 // Special handling for .length property
                 if field == "length" {
                     // Check if this is accessing length on a known identifier
@@ -1800,7 +1799,7 @@ impl CCodeGen {
                         return string_val.len().to_string();
                     }
                 }
-                
+
                 // Default struct field access
                 format!("{}.{}", object_str, field)
             }
@@ -1825,7 +1824,7 @@ impl CCodeGen {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{Expression, Statement, Program, Type};
+    use crate::ast::{Expression, Program, Statement, Type};
     use std::collections::HashMap;
 
     fn setup_codegen() -> CCodeGen {
@@ -1835,25 +1834,25 @@ mod tests {
     #[test]
     fn test_getargs_function_call() {
         let mut codegen = setup_codegen();
-        
+
         let expr = Expression::FunctionCall {
             name: "getArgs".to_string(),
             args: vec![],
         };
-        
+
         let result = codegen.compile_expression_to_string(expr);
         assert_eq!(result, "getArgs()");
     }
 
-    #[test] 
+    #[test]
     fn test_tostring_function_call() {
         let mut codegen = setup_codegen();
-        
+
         let expr = Expression::FunctionCall {
             name: "toString".to_string(),
             args: vec![Expression::IntegerLiteral(42)],
         };
-        
+
         let result = codegen.compile_expression_to_string(expr);
         assert_eq!(result, "toString(42)");
     }
@@ -1861,14 +1860,16 @@ mod tests {
     #[test]
     fn test_getargs_length_property() {
         let mut codegen = setup_codegen();
-        // Register getArgs as getargs type 
-        codegen.variables.insert("args".to_string(), "getargs".to_string());
-        
+        // Register getArgs as getargs type
+        codegen
+            .variables
+            .insert("args".to_string(), "getargs".to_string());
+
         let expr = Expression::FieldAccess {
             object: Box::new(Expression::Identifier("args".to_string())),
             field: "length".to_string(),
         };
-        
+
         let result = codegen.compile_expression_to_string(expr);
         assert_eq!(result, "getArgsLength()");
     }
@@ -1878,12 +1879,12 @@ mod tests {
         let mut codegen = setup_codegen();
         // Register array with known length
         codegen.array_lengths.insert("numbers".to_string(), 5);
-        
+
         let expr = Expression::FieldAccess {
             object: Box::new(Expression::Identifier("numbers".to_string())),
             field: "length".to_string(),
         };
-        
+
         let result = codegen.compile_expression_to_string(expr);
         assert_eq!(result, "5");
     }
@@ -1892,13 +1893,15 @@ mod tests {
     fn test_string_length_property() {
         let mut codegen = setup_codegen();
         // Register string variable
-        codegen.variables.insert("name".to_string(), "string".to_string());
-        
+        codegen
+            .variables
+            .insert("name".to_string(), "string".to_string());
+
         let expr = Expression::FieldAccess {
             object: Box::new(Expression::Identifier("name".to_string())),
             field: "length".to_string(),
         };
-        
+
         let result = codegen.compile_expression_to_string(expr);
         assert_eq!(result, "strlen(name)");
     }
@@ -1906,12 +1909,12 @@ mod tests {
     #[test]
     fn test_string_literal_length() {
         let mut codegen = setup_codegen();
-        
+
         let expr = Expression::FieldAccess {
             object: Box::new(Expression::StringLiteral("hello".to_string())),
             field: "length".to_string(),
         };
-        
+
         let result = codegen.compile_expression_to_string(expr);
         assert_eq!(result, "5");
     }
@@ -1919,12 +1922,10 @@ mod tests {
     #[test]
     fn test_compile_program_includes_getargs_helpers() {
         let mut codegen = setup_codegen();
-        let program = Program {
-            statements: vec![],
-        };
-        
+        let program = Program { statements: vec![] };
+
         let result = codegen.compile_program(program);
-        
+
         // Check that helper functions are included
         assert!(result.contains("int bolt_argc;"));
         assert!(result.contains("char** bolt_argv;"));
@@ -1937,12 +1938,10 @@ mod tests {
     #[test]
     fn test_main_function_sets_globals() {
         let mut codegen = setup_codegen();
-        let program = Program {
-            statements: vec![],
-        };
-        
+        let program = Program { statements: vec![] };
+
         let result = codegen.compile_program(program);
-        
+
         // Check that main function sets global variables
         assert!(result.contains("int main(int argc, char* argv[]) {"));
         assert!(result.contains("bolt_argc = argc;"));
@@ -1952,7 +1951,7 @@ mod tests {
     #[test]
     fn test_getargs_variable_type_tracking() {
         let mut codegen = setup_codegen();
-        
+
         let val_decl = Statement::ValDecl {
             name: "args".to_string(),
             type_annotation: None,
@@ -1961,9 +1960,9 @@ mod tests {
                 args: vec![],
             },
         };
-        
+
         codegen.compile_main_statement(val_decl);
-        
+
         // Check that getArgs result is tracked as getargs type
         assert_eq!(codegen.variables.get("args"), Some(&"getargs".to_string()));
         assert!(codegen.main_code.contains("char** args = getArgs();"));
@@ -1973,22 +1972,22 @@ mod tests {
     fn test_for_in_getargs_compilation() {
         let mut codegen = setup_codegen();
         // First declare args variable
-        codegen.variables.insert("args".to_string(), "getargs".to_string());
-        
+        codegen
+            .variables
+            .insert("args".to_string(), "getargs".to_string());
+
         let for_in = Statement::ForIn {
             variable: "arg".to_string(),
             iterable: Expression::Identifier("args".to_string()),
-            body: vec![
-                Statement::Expression(Expression::NamespacedFunctionCall {
-                    namespace: "stdio".to_string(),
-                    function: "print".to_string(),
-                    args: vec![Expression::Identifier("arg".to_string())],
-                }),
-            ],
+            body: vec![Statement::Expression(Expression::NamespacedFunctionCall {
+                namespace: "stdio".to_string(),
+                function: "print".to_string(),
+                args: vec![Expression::Identifier("arg".to_string())],
+            })],
         };
-        
+
         codegen.compile_main_statement(for_in);
-        
+
         // Check for-in loop with getArgsLength()
         assert!(codegen.main_code.contains("getArgsLength()"));
         assert!(codegen.main_code.contains("char* arg = args["));
@@ -1998,7 +1997,7 @@ mod tests {
     #[test]
     fn test_toString_variable_type_tracking() {
         let mut codegen = setup_codegen();
-        
+
         let val_decl = Statement::ValDecl {
             name: "numStr".to_string(),
             type_annotation: None,
@@ -2007,9 +2006,9 @@ mod tests {
                 args: vec![Expression::IntegerLiteral(42)],
             },
         };
-        
+
         codegen.compile_main_statement(val_decl);
-        
+
         // Check that toString result is tracked as string type
         assert_eq!(codegen.variables.get("numStr"), Some(&"string".to_string()));
         assert!(codegen.main_code.contains("char* numStr = toString(42);"));
@@ -2018,8 +2017,10 @@ mod tests {
     #[test]
     fn test_nested_length_property() {
         let mut codegen = setup_codegen();
-        codegen.variables.insert("args".to_string(), "getargs".to_string());
-        
+        codegen
+            .variables
+            .insert("args".to_string(), "getargs".to_string());
+
         // Test toString(args.length)
         let expr = Expression::FunctionCall {
             name: "toString".to_string(),
@@ -2028,7 +2029,7 @@ mod tests {
                 field: "length".to_string(),
             }],
         };
-        
+
         let result = codegen.compile_expression_to_string(expr);
         assert_eq!(result, "toString(getArgsLength())");
     }
