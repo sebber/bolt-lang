@@ -5,6 +5,7 @@ mod lexer;
 mod module;
 mod parser;
 mod symbol_table;
+mod type_checker;
 
 use clap::{Arg, Command as ClapCommand};
 use std::fs;
@@ -15,6 +16,7 @@ use error::CompileError;
 use lexer::Lexer;
 use module::ModuleSystem;
 use parser::Parser;
+// use type_checker::TypeChecker;
 
 fn main() {
     if let Err(e) = run() {
@@ -87,6 +89,21 @@ fn run() -> Result<(), CompileError> {
     module_system
         .resolve_imports(&ast)
         .map_err(|e| CompileError::CodegenError(format!("Module resolution error: {}", e)))?;
+
+    // Type checking (currently disabled to avoid breaking existing tests)
+    // TODO: Enable once type checker is more robust
+    /*
+    let mut type_checker = TypeChecker::new().with_module_system(module_system.clone());
+    if let Err(type_errors) = type_checker.check_program(&ast) {
+        println!("Type errors found:");
+        for error in &type_errors {
+            println!("  {}", error.message);
+        }
+        return Err(CompileError::CodegenError(
+            format!("Type checking failed with {} errors", type_errors.len())
+        ));
+    }
+    */
 
     // Code generation with module support and symbol table
     let mut codegen = CCodeGen::with_symbol_table(symbol_table);
