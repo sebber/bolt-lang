@@ -6,11 +6,15 @@ use std::io::{self, BufRead, BufReader, Read, Write};
 mod ast;
 mod error;
 mod lexer;
+mod module;
 mod parser;
 mod symbol_table;
+mod type_checker;
 
 use lexer::Lexer;
+use module::ModuleSystem;
 use parser::Parser;
+use type_checker::TypeChecker;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Message {
@@ -29,12 +33,19 @@ struct Message {
 
 struct LspServer {
     documents: HashMap<String, String>,
+    type_checker: TypeChecker,
+    module_system: ModuleSystem,
 }
 
 impl LspServer {
     fn new() -> Self {
+        let module_system = ModuleSystem::new();
+        let type_checker = TypeChecker::new().with_module_system(module_system.clone());
+        
         Self {
             documents: HashMap::new(),
+            type_checker,
+            module_system,
         }
     }
 
@@ -369,63 +380,8 @@ impl LspServer {
                         );
                     }
 
-                    // Enhanced completion items with generic type support
-                    let items = vec![
-                        // Keywords
-                        json!({"label": "val", "kind": 14, "detail": "Immutable variable", "insertText": "val "}),
-                        json!({"label": "var", "kind": 14, "detail": "Mutable variable", "insertText": "var "}),
-                        json!({"label": "fun", "kind": 14, "detail": "Function", "insertText": "fun "}),
-                        json!({"label": "type", "kind": 14, "detail": "Type definition", "insertText": "type "}),
-                        json!({"label": "if", "kind": 14, "detail": "If statement", "insertText": "if "}),
-                        json!({"label": "for", "kind": 14, "detail": "For loop", "insertText": "for "}),
-                        json!({"label": "import", "kind": 14, "detail": "Import", "insertText": "import "}),
-                        json!({"label": "export", "kind": 14, "detail": "Export declaration", "insertText": "export "}),
-                        json!({"label": "native", "kind": 14, "detail": "Native code block", "insertText": "native "}),
-                        json!({"label": "return", "kind": 14, "detail": "Return statement", "insertText": "return "}),
-                        // Built-in functions
-                        json!({"label": "print", "kind": 3, "detail": "Print function", "insertText": "print("}),
-                        // Standard library modules
-                        json!({"label": "\"bolt:stdio\"", "kind": 9, "detail": "Standard I/O module", "insertText": "\"bolt:stdio\""}),
-                        json!({"label": "\"bolt:math\"", "kind": 9, "detail": "Math utilities module", "insertText": "\"bolt:math\""}),
-                        json!({"label": "\"bolt:io\"", "kind": 9, "detail": "File I/O operations module", "insertText": "\"bolt:io\""}),
-                        json!({"label": "\"bolt:string\"", "kind": 9, "detail": "String utilities module", "insertText": "\"bolt:string\""}),
-                        // File I/O functions (bolt:io)
-                        json!({"label": "readFile", "kind": 3, "detail": "Read file contents: (path: String) -> String", "insertText": "readFile("}),
-                        json!({"label": "writeFile", "kind": 3, "detail": "Write file contents: (path: String, content: String) -> Bool", "insertText": "writeFile("}),
-                        json!({"label": "appendFile", "kind": 3, "detail": "Append to file: (path: String, content: String) -> Bool", "insertText": "appendFile("}),
-                        json!({"label": "deleteFile", "kind": 3, "detail": "Delete file: (path: String) -> Bool", "insertText": "deleteFile("}),
-                        json!({"label": "fileExists", "kind": 3, "detail": "Check if file exists: (path: String) -> Bool", "insertText": "fileExists("}),
-                        // String utilities (bolt:string)
-                        json!({"label": "length", "kind": 3, "detail": "Get string length: (s: String) -> Integer", "insertText": "length("}),
-                        json!({"label": "concat", "kind": 3, "detail": "Concatenate strings: (a: String, b: String) -> String", "insertText": "concat("}),
-                        json!({"label": "indexOf", "kind": 3, "detail": "Find substring index: (s: String, substr: String) -> Integer", "insertText": "indexOf("}),
-                        json!({"label": "contains", "kind": 3, "detail": "Check if string contains substring: (s: String, substr: String) -> Bool", "insertText": "contains("}),
-                        json!({"label": "trim", "kind": 3, "detail": "Remove whitespace: (s: String) -> String", "insertText": "trim("}),
-                        // Built-in types
-                        json!({"label": "Integer", "kind": 7, "detail": "Integer type", "insertText": "Integer"}),
-                        json!({"label": "String", "kind": 7, "detail": "String type", "insertText": "String"}),
-                        json!({"label": "Bool", "kind": 7, "detail": "Boolean type", "insertText": "Bool"}),
-                        // Generic types and snippets
-                        json!({"label": "Array[T]", "kind": 7, "detail": "Generic array type", "insertText": "Array[T]"}),
-                        json!({"label": "Array[Integer]", "kind": 7, "detail": "Integer array", "insertText": "Array[Integer]"}),
-                        json!({"label": "Array[String]", "kind": 7, "detail": "String array", "insertText": "Array[String]"}),
-                        json!({"label": "Array[Bool]", "kind": 7, "detail": "Boolean array", "insertText": "Array[Bool]"}),
-                        // Generic type patterns
-                        json!({"label": "Result[T]", "kind": 7, "detail": "Generic result type", "insertText": "Result[T]"}),
-                        json!({"label": "Box[T]", "kind": 7, "detail": "Generic box type", "insertText": "Box[T]"}),
-                        // Common patterns
-                        json!({"label": "for in", "kind": 15, "detail": "For-in loop with Array[T]", "insertText": "for item in "}),
-                        json!({"label": "type def", "kind": 15, "detail": "Generic type definition", "insertText": "type Name[T] = { data: T }"}),
-                        // Module import patterns
-                        json!({"label": "import io", "kind": 15, "detail": "Import file I/O functions", "insertText": "import { readFile, writeFile } from \"bolt:io\""}),
-                        json!({"label": "import string", "kind": 15, "detail": "Import string utilities", "insertText": "import { length, concat, contains } from \"bolt:string\""}),
-                        json!({"label": "import stdio", "kind": 15, "detail": "Import stdio functions", "insertText": "import { print } from \"bolt:stdio\""}),
-                        // Native code patterns
-                        json!({"label": "native C", "kind": 15, "detail": "Native C function block", "insertText": "native \"C\" {\\n    export fun functionName(param: Type): ReturnType\\n}"}),
-                        // Literals
-                        json!({"label": "true", "kind": 12, "detail": "Boolean true", "insertText": "true"}),
-                        json!({"label": "false", "kind": 12, "detail": "Boolean false", "insertText": "false"}),
-                    ];
+                    // Get context-aware completion items using type information
+                    let items = self.get_completion_items(msg.params.as_ref());
 
                     let response = Message {
                         jsonrpc: "2.0".to_string(),
@@ -624,7 +580,7 @@ impl LspServer {
 
     fn get_hover_info(&self, document: &str, line: usize, character: usize) -> String {
         eprintln!(
-            "LSP: Getting hover info at line {} character {}",
+            "LSP: Getting type-aware hover info at line {} character {}",
             line, character
         );
 
@@ -664,7 +620,12 @@ impl LspServer {
         let word: String = chars[start..end].iter().collect();
         eprintln!("LSP: Found word: '{}'", word);
 
-        // Provide specific hover information based on the word
+        // First, try to get type information from the type checker
+        if let Ok(type_info) = self.get_type_info_for_word(document, &word, line) {
+            return type_info;
+        }
+
+        // Fall back to static hover information based on the word
         match word.as_str() {
             "print" => {
                 "**`print(value)`**\n\n*Built-in function*\n\nPrints a value to the console.\n\n**Examples:**\n```bolt\nprint(\"Hello, World!\")\nprint(42)\nprint(true)\n```".to_string()
@@ -1047,6 +1008,154 @@ impl LspServer {
             let result = docs.join("\n\n");
             eprintln!("LSP: Final documentation: '{}'", result);
             Some(result)
+        }
+    }
+
+    fn get_type_info_for_word(&self, document: &str, word: &str, _line: usize) -> Result<String, String> {
+        eprintln!("LSP: Getting type info for word: '{}'", word);
+        
+        // Try to parse the document to get type information
+        let mut lexer = Lexer::new(document.to_string());
+        if let Ok(tokens) = lexer.tokenize() {
+            let mut parser = Parser::new(tokens);
+            if let Ok(ast) = parser.parse() {
+                // Create a type checker for this document
+                let mut type_checker = TypeChecker::new().with_module_system(self.module_system.clone());
+                
+                // Try to type check the program (ignore errors for now)
+                let _ = type_checker.check_program(&ast);
+                
+                // Check if it's a function
+                if let Some(func_sig) = type_checker.get_function_signature(word) {
+                    let params_str: Vec<String> = func_sig.params.iter()
+                        .map(|(name, ty)| format!("{}: {:?}", name, ty))
+                        .collect();
+                    
+                    let return_str = func_sig.return_type
+                        .as_ref()
+                        .map(|t| format!("{:?}", t))
+                        .unwrap_or_else(|| "void".to_string());
+                    
+                    let func_type = if func_sig.is_native {
+                        "Native Function"
+                    } else if func_sig.is_extern {
+                        "Extern Function" 
+                    } else {
+                        "Function"
+                    };
+                    
+                    return Ok(format!(
+                        "**`{}({}): {}`**\n\n*{}*\n\n{}",
+                        word,
+                        params_str.join(", "),
+                        return_str,
+                        func_type,
+                        self.get_function_docs(word)
+                    ));
+                }
+                
+                // Check if it's a variable
+                if let Some(var_type) = type_checker.get_variable_type(word) {
+                    return Ok(format!(
+                        "**`{}: {:?}`**\n\n*Variable*\n\nType: `{:?}`",
+                        word, var_type, var_type
+                    ));
+                }
+            }
+        }
+        
+        Err("No type information found".to_string())
+    }
+
+    fn get_completion_items(&self, params: Option<&serde_json::Value>) -> Vec<serde_json::Value> {
+        let mut items = Vec::new();
+        
+        // Add basic language keywords
+        items.extend(vec![
+            json!({"label": "val", "kind": 14, "detail": "Immutable variable", "insertText": "val "}),
+            json!({"label": "var", "kind": 14, "detail": "Mutable variable", "insertText": "var "}),
+            json!({"label": "fun", "kind": 14, "detail": "Function", "insertText": "fun "}),
+            json!({"label": "type", "kind": 14, "detail": "Type definition", "insertText": "type "}),
+            json!({"label": "if", "kind": 14, "detail": "If statement", "insertText": "if "}),
+            json!({"label": "else", "kind": 14, "detail": "Else clause", "insertText": "else "}),
+            json!({"label": "for", "kind": 14, "detail": "For loop", "insertText": "for "}),
+            json!({"label": "while", "kind": 14, "detail": "While loop", "insertText": "while "}),
+            json!({"label": "import", "kind": 14, "detail": "Import statement", "insertText": "import "}),
+            json!({"label": "export", "kind": 14, "detail": "Export declaration", "insertText": "export "}),
+            json!({"label": "return", "kind": 14, "detail": "Return statement", "insertText": "return "}),
+            json!({"label": "true", "kind": 12, "detail": "Boolean literal", "insertText": "true"}),
+            json!({"label": "false", "kind": 12, "detail": "Boolean literal", "insertText": "false"}),
+        ]);
+
+        // Add built-in types
+        items.extend(vec![
+            json!({"label": "Integer", "kind": 7, "detail": "Integer type", "insertText": "Integer"}),
+            json!({"label": "String", "kind": 7, "detail": "String type", "insertText": "String"}),
+            json!({"label": "Bool", "kind": 7, "detail": "Boolean type", "insertText": "Bool"}),
+            json!({"label": "Void", "kind": 7, "detail": "Void type", "insertText": "Void"}),
+        ]);
+
+        // Add functions from type checker if available
+        for (func_name, signature) in self.type_checker.get_all_functions() {
+            let detail = format!("({}) -> {}", 
+                signature.params.iter()
+                    .map(|(name, param_type)| format!("{}: {:?}", name, param_type))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                format!("{:?}", signature.return_type)
+            );
+            
+            items.push(json!({
+                "label": func_name,
+                "kind": 3, // Function
+                "detail": detail,
+                "insertText": format!("{}(", func_name)
+            }));
+        }
+
+        // Add variables from type checker if available
+        for (var_name, var_type) in self.type_checker.get_all_variables() {
+            items.push(json!({
+                "label": var_name,
+                "kind": 6, // Variable
+                "detail": format!("{:?}", var_type),
+                "insertText": var_name
+            }));
+        }
+
+        // Add module completion items
+        items.extend(vec![
+            json!({"label": "\"bolt:stdio\"", "kind": 9, "detail": "Standard I/O module", "insertText": "\"bolt:stdio\""}),
+            json!({"label": "\"bolt:math\"", "kind": 9, "detail": "Math utilities module", "insertText": "\"bolt:math\""}),
+            json!({"label": "\"bolt:io\"", "kind": 9, "detail": "File I/O operations module", "insertText": "\"bolt:io\""}),
+            json!({"label": "\"bolt:string\"", "kind": 9, "detail": "String utilities module", "insertText": "\"bolt:string\""}),
+        ]);
+
+        // Add common snippets
+        items.extend(vec![
+            json!({"label": "for in", "kind": 15, "detail": "For-in loop", "insertText": "for ${1:item} in ${2:array} {\n    ${0}\n}"}),
+            json!({"label": "if else", "kind": 15, "detail": "If-else statement", "insertText": "if ${1:condition} {\n    ${2}\n} else {\n    ${0}\n}"}),
+            json!({"label": "function", "kind": 15, "detail": "Function definition", "insertText": "fun ${1:name}(${2:params}): ${3:ReturnType} {\n    ${0}\n}"}),
+        ]);
+
+        items
+    }
+
+    fn get_function_docs(&self, func_name: &str) -> String {
+        match func_name {
+            "print" => "Prints a value to the console.\n\n**Examples:**\n```bolt\nprint(\"Hello!\")\nprint(42)\n```".to_string(),
+            "toString" => "Converts an integer to a string representation.".to_string(),
+            "length" => "Returns the length of a string.".to_string(),
+            "concat" => "Concatenates two strings together.".to_string(),
+            "indexOf" => "Finds the index of a substring within a string. Returns -1 if not found.".to_string(),
+            "contains" => "Checks if a string contains a substring.".to_string(),
+            "trim" => "Removes whitespace from the beginning and end of a string.".to_string(),
+            "readFile" => "Reads the entire contents of a file as a string.".to_string(),
+            "writeFile" => "Writes content to a file. Returns true if successful.".to_string(),
+            "appendFile" => "Appends content to the end of a file. Returns true if successful.".to_string(),
+            "fileExists" => "Checks if a file exists at the given path.".to_string(),
+            "deleteFile" => "Deletes a file. Returns true if successful.".to_string(),
+            _ => "".to_string(),
         }
     }
 }
