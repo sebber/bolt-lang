@@ -668,7 +668,10 @@ impl CCodeGen {
                             self.main_code
                                 .push_str(&format!("    int {} = {};\n", name, call_str));
                             self.variables.insert(name, "bool".to_string()); // These return boolean values
-                        } else if func_name == "concat" || func_name == "trim" || func_name == "getenv" {
+                        } else if func_name == "concat"
+                            || func_name == "trim"
+                            || func_name == "getenv"
+                        {
                             self.main_code
                                 .push_str(&format!("    char* {} = {};\n", name, call_str));
                             self.variables.insert(name, "string".to_string()); // These return strings
@@ -878,7 +881,10 @@ impl CCodeGen {
                             self.main_code
                                 .push_str(&format!("    int {} = {};\n", name, call_str));
                             self.variables.insert(name, "bool".to_string()); // These return boolean values
-                        } else if func_name == "concat" || func_name == "trim" || func_name == "getenv" {
+                        } else if func_name == "concat"
+                            || func_name == "trim"
+                            || func_name == "getenv"
+                        {
                             self.main_code
                                 .push_str(&format!("    char* {} = {};\n", name, call_str));
                             self.variables.insert(name, "string".to_string()); // These return strings
@@ -2307,14 +2313,18 @@ impl CCodeGen {
         }
     }
 
-    fn compile_extern_c_functions(&mut self, functions: &[crate::ast::ExternFunction], result: &mut String) {
+    fn compile_extern_c_functions(
+        &mut self,
+        functions: &[crate::ast::ExternFunction],
+        result: &mut String,
+    ) {
         // Generate C function declarations for extern functions
         for function in functions {
             // Collect library requirements
             if let Some(library) = &function.library {
                 self.required_libraries.insert(library.clone());
             }
-            
+
             // Generate function signature
             let return_type = match &function.return_type {
                 Some(Type::String) => "char*", // Return types use char* not const char*
@@ -2322,7 +2332,7 @@ impl CCodeGen {
                 None => "void",
             };
             result.push_str(&format!("extern {} {}(", return_type, function.name));
-            
+
             // Generate parameters
             for (i, param) in function.params.iter().enumerate() {
                 if i > 0 {
@@ -2331,10 +2341,10 @@ impl CCodeGen {
                 let param_type = self.param_to_c_type(&param.param_type);
                 result.push_str(&format!("{} {}", param_type, param.name));
             }
-            
+
             result.push_str(");\n");
         }
-        
+
         result.push_str("\n");
     }
 }

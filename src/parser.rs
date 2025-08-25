@@ -1308,7 +1308,7 @@ impl Parser {
 
     fn parse_extern_block(&mut self) -> Statement {
         use crate::ast::ExternFunction;
-        
+
         self.advance(); // consume 'extern'
 
         // Expect a string literal for the language (e.g., "C")
