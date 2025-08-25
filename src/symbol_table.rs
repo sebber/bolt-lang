@@ -198,6 +198,12 @@ pub struct SymbolTable {
     next_symbol_id: SymbolId,
 }
 
+impl Default for SymbolTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SymbolTable {
     pub fn new() -> Self {
         let mut symbol_table = Self {
@@ -397,20 +403,16 @@ impl SymbolTable {
     pub fn lookup(&self, name: &str) -> Option<SymbolId> {
         let mut current_scope_id = self.current_scope;
 
-        loop {
-            if let Some(scope) = self.get_scope(current_scope_id) {
-                if let Some(symbol_id) = scope.get_symbol(name) {
-                    return Some(symbol_id);
-                }
+        while let Some(scope) = self.get_scope(current_scope_id) {
+            if let Some(symbol_id) = scope.get_symbol(name) {
+                return Some(symbol_id);
+            }
 
-                // Move to parent scope
-                if let Some(parent_id) = scope.parent {
-                    current_scope_id = parent_id;
-                } else {
-                    break; // Reached global scope
-                }
+            // Move to parent scope
+            if let Some(parent_id) = scope.parent {
+                current_scope_id = parent_id;
             } else {
-                break;
+                break; // Reached global scope
             }
         }
 

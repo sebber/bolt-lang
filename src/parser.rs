@@ -1165,9 +1165,6 @@ impl Parser {
         }
     }
 
-    fn parse_function_with_export_flag(&mut self, exported: bool) -> Statement {
-        self.parse_function(exported)
-    }
 
     fn parse_export(&mut self) -> Statement {
         self.advance(); // consume 'export'

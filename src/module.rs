@@ -1,4 +1,4 @@
-use crate::ast::{NativeFunction, Program, Statement};
+use crate::ast::{Program, Statement};
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use std::collections::HashMap;
@@ -16,6 +16,12 @@ pub struct ModuleSystem {
     modules: HashMap<String, Program>,
     exports: HashMap<String, ModuleExports>,
     resolved_imports: HashMap<String, Vec<String>>,
+}
+
+impl Default for ModuleSystem {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ModuleSystem {

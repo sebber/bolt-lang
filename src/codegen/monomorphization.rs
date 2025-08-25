@@ -30,6 +30,12 @@ pub struct Monomorphizer {
     generated_monomorphs: HashMap<MonomorphicType, String>, // Cache generated C code
 }
 
+impl Default for Monomorphizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Monomorphizer {
     pub fn new() -> Self {
         Self {
