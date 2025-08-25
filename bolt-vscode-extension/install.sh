@@ -1,7 +1,7 @@
 #!/bin/bash
 # Install Bolt Language Extension for VS Code
 
-EXTENSION_DIR="$HOME/.vscode/extensions/bolt-language-0.3.0"
+EXTENSION_DIR="$HOME/.vscode/extensions/bolt-language-0.4.0"
 
 echo "🔧 Installing Bolt Language Extension for VS Code..."
 
