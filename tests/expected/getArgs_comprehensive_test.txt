@@ -1,0 +1,7 @@
+Arguments received:
+1
+All arguments:
+./out/debug/test_getArgs_comprehensive_test
+No additional arguments
+Total args plus 10:
+11

@@ -1,0 +1,12 @@
+import { print } from "bolt:stdio"
+
+fun main() {
+    val args := getArgs()
+    print("Argument count:")
+    print(toString(args.length))
+    
+    // Print each argument
+    for arg in args {
+        print(arg)
+    }
+}

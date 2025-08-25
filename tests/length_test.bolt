@@ -1,0 +1,19 @@
+import { print } from "bolt:stdio"
+
+fun main() {
+    // String length
+    val message := "hello world"
+    print(message.length)
+    
+    // Array length
+    val numbers := [1, 2, 3, 4, 5]
+    print(numbers.length)
+    
+    // Empty string length
+    val empty := ""
+    print(empty.length)
+    
+    // Empty array length
+    val empty_array := []
+    print(empty_array.length)
+}

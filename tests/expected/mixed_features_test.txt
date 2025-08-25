@@ -1,0 +1,15 @@
+Command line test:
+1
+Data array length:
+4
+Message length:
+5
+Complex calculation:
+10
+Args iteration:
+./out/debug/test_mixed_features_test
+Data iteration:
+10
+20
+30
+40

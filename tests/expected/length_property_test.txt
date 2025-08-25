@@ -1,0 +1,10 @@
+String literal length:
+5
+Array length:
+5
+String variable length:
+13
+Empty array length:
+0
+Nested length:
+4

@@ -1,0 +1,3 @@
+Argument count:
+1
+./out/debug/test_getArgs_test

@@ -1,0 +1,27 @@
+import { print } from "bolt:stdio"
+
+fun main() {
+    val args := getArgs()
+    
+    // Test getArgs length
+    print("Arguments received:")
+    print(toString(args.length))
+    
+    // Test argument iteration
+    print("All arguments:")
+    for arg in args {
+        print(arg)
+    }
+    
+    // Test conditional based on args
+    if (args.length > 1) {
+        print("Has additional arguments")
+    } else {
+        print("No additional arguments")
+    }
+    
+    // Test using args.length in expressions
+    val totalArgs := args.length + 10
+    print("Total args plus 10:")
+    print(toString(totalArgs))
+}
