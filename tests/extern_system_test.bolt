@@ -1,0 +1,22 @@
+import { print } from "bolt:stdio"
+
+extern "C" {
+    export fun system(command: String): Integer
+    export fun getenv(name: String): String
+}
+
+fun main(): Integer {
+    print("Testing extern system functions:")
+    
+    // Get environment variable
+    val home := getenv("HOME")
+    print("HOME environment variable:")
+    print(home)
+    
+    // Execute system command (safe echo command)
+    val result := system("echo 'Hello from system call!'")
+    print("System command result:")
+    print(toString(result))
+    
+    return 0
+}

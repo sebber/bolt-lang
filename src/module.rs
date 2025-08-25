@@ -84,6 +84,14 @@ impl ModuleSystem {
                         }
                     }
                 }
+                Statement::ExternBlock { functions, .. } => {
+                    // Extract exported functions from extern blocks
+                    for extern_func in functions {
+                        if extern_func.exported {
+                            exports.functions.push(extern_func.name.clone());
+                        }
+                    }
+                }
                 Statement::Function { name, exported, .. } => {
                     // Extract exported regular functions
                     if *exported {
@@ -161,6 +169,12 @@ impl ModuleSystem {
                         // Add native functions to the list
                         for native_func in functions {
                             all_functions.insert(native_func.name.clone(), module_path.clone());
+                        }
+                    }
+                    Statement::ExternBlock { functions, .. } => {
+                        // Add extern functions to the list
+                        for extern_func in functions {
+                            all_functions.insert(extern_func.name.clone(), module_path.clone());
                         }
                     }
                     _ => {}
