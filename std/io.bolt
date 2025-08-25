@@ -1,0 +1,9 @@
+// Bolt Standard Library - I/O Module
+
+native "C" {
+    export fun readFile(path: String): String
+    export fun writeFile(path: String, content: String): Bool
+    export fun appendFile(path: String, content: String): Bool
+    export fun fileExists(path: String): Bool
+    export fun deleteFile(path: String): Bool
+}

@@ -1,0 +1,63 @@
+import { print } from "bolt:stdio"
+import { readFile, writeFile, deleteFile } from "bolt:io"
+import { length, concat, indexOf, contains, trim } from "bolt:string"
+
+fun main(): Integer {
+    // Create a sample text file
+    val sample_text := "Hello world! This is a test file."
+    val success := writeFile("test.txt", sample_text)
+    
+    if (!success) {
+        print("Failed to create file")
+        return 1
+    }
+    
+    print("Created file with content:")
+    val content := readFile("test.txt")
+    print(content)
+    print("")
+    
+    // Test string functions
+    val content_length := length(content)
+    print("Content length:")
+    print(toString(content_length))
+    
+    val has_world := contains(content, "world")
+    if (has_world) {
+        print("File contains 'world'")
+        val world_pos := indexOf(content, "world")
+        print("Position of 'world':")
+        print(toString(world_pos))
+    }
+    
+    val has_missing := contains(content, "missing")
+    if (!has_missing) {
+        print("File does not contain 'missing'")
+    }
+    
+    // Test concatenation and file operations
+    val additional := " Added more text."
+    val updated_content := concat(content, additional)
+    val append_success := writeFile("updated.txt", updated_content)
+    
+    if (append_success) {
+        print("Created updated file:")
+        val final_content := readFile("updated.txt")
+        print(final_content)
+    }
+    
+    // Test trim function
+    val whitespace_text := "   trimmed text   "
+    val trimmed := trim(whitespace_text)
+    print("Original text with whitespace:")
+    print(whitespace_text)
+    print("Trimmed text:")
+    print(trimmed)
+    
+    // Cleanup
+    deleteFile("test.txt")
+    deleteFile("updated.txt")
+    print("Files deleted")
+    
+    return 0
+}

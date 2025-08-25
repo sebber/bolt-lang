@@ -1,4 +1,4 @@
-use crate::ast::{Program, Statement};
+use crate::ast::{Program, Statement, NativeFunction};
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use std::collections::HashMap;
@@ -76,6 +76,20 @@ impl ModuleSystem {
                     // In a more sophisticated system, we'd track types of exported items
                     exports.functions.push(item.clone());
                 }
+                Statement::NativeBlock { functions, .. } => {
+                    // Extract exported functions from native blocks
+                    for native_func in functions {
+                        if native_func.exported {
+                            exports.functions.push(native_func.name.clone());
+                        }
+                    }
+                }
+                Statement::Function { name, exported, .. } => {
+                    // Extract exported regular functions
+                    if *exported {
+                        exports.functions.push(name.clone());
+                    }
+                }
                 _ => {}
             }
         }
@@ -139,8 +153,17 @@ impl ModuleSystem {
 
         for (module_path, program) in &self.modules {
             for statement in &program.statements {
-                if let Statement::Function { name, .. } = statement {
-                    all_functions.insert(name.clone(), module_path.clone());
+                match statement {
+                    Statement::Function { name, .. } => {
+                        all_functions.insert(name.clone(), module_path.clone());
+                    }
+                    Statement::NativeBlock { functions, .. } => {
+                        // Add native functions to the list
+                        for native_func in functions {
+                            all_functions.insert(native_func.name.clone(), module_path.clone());
+                        }
+                    }
+                    _ => {}
                 }
             }
         }

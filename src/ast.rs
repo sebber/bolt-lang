@@ -38,6 +38,14 @@ pub struct Parameter {
 }
 
 #[derive(Debug, Clone)]
+pub struct NativeFunction {
+    pub name: String,
+    pub params: Vec<Parameter>,
+    pub return_type: Option<Type>,
+    pub exported: bool,
+}
+
+#[derive(Debug, Clone)]
 pub enum Statement {
     VarDecl {
         name: String,
@@ -97,6 +105,10 @@ pub enum Statement {
     Assignment {
         variable: String,
         value: Expression,
+    },
+    NativeBlock {
+        language: String,       // e.g., "C"
+        functions: Vec<NativeFunction>,
     },
 }
 

@@ -14,6 +14,7 @@ pub enum TokenType {
     Import,
     Export,
     From,
+    Native,
     Identifier(String),
     String(String),
     Integer(i64),
@@ -319,6 +320,7 @@ impl Lexer {
             "import" => TokenType::Import,
             "export" => TokenType::Export,
             "from" => TokenType::From,
+            "native" => TokenType::Native,
             _ => TokenType::Identifier(value),
         }
     }

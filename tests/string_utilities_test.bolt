@@ -1,0 +1,53 @@
+import { print } from "bolt:stdio"
+import { length, concat, indexOf, contains, trim } from "bolt:string"
+
+fun main(): Integer {
+    // Test string length function
+    val text := "Hello, World!"
+    val len := length(text)
+    print("String length:")
+    print(toString(len))
+    
+    // Test string concatenation
+    val greeting := "Hello"
+    val target := " Bolt!"
+    val message := concat(greeting, target)
+    print("Concatenated string:")
+    print(message)
+    
+    // Test indexOf function
+    val sample := "The quick brown fox"
+    val index := indexOf(sample, "quick")
+    print("Index of 'quick':")
+    print(toString(index))
+    
+    // Test indexOf with non-existent substring
+    val not_found := indexOf(sample, "zebra")
+    print("Index of 'zebra' (should be -1):")
+    print(toString(not_found))
+    
+    // Test contains function
+    val has_brown := contains(sample, "brown")
+    if (has_brown) {
+        print("String contains 'brown': true")
+    } else {
+        print("String contains 'brown': false")
+    }
+    
+    val has_zebra := contains(sample, "zebra")
+    if (has_zebra) {
+        print("String contains 'zebra': true")
+    } else {
+        print("String contains 'zebra': false")
+    }
+    
+    // Test trim function
+    val whitespace_text := "  hello world  "
+    val trimmed := trim(whitespace_text)
+    print("Original:")
+    print(whitespace_text)
+    print("Trimmed:")
+    print(trimmed)
+    
+    return 0
+}
