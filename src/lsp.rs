@@ -379,9 +379,28 @@ impl LspServer {
                         json!({"label": "if", "kind": 14, "detail": "If statement", "insertText": "if "}),
                         json!({"label": "for", "kind": 14, "detail": "For loop", "insertText": "for "}),
                         json!({"label": "import", "kind": 14, "detail": "Import", "insertText": "import "}),
+                        json!({"label": "export", "kind": 14, "detail": "Export declaration", "insertText": "export "}),
+                        json!({"label": "native", "kind": 14, "detail": "Native code block", "insertText": "native "}),
                         json!({"label": "return", "kind": 14, "detail": "Return statement", "insertText": "return "}),
                         // Built-in functions
                         json!({"label": "print", "kind": 3, "detail": "Print function", "insertText": "print("}),
+                        // Standard library modules
+                        json!({"label": "\"bolt:stdio\"", "kind": 9, "detail": "Standard I/O module", "insertText": "\"bolt:stdio\""}),
+                        json!({"label": "\"bolt:math\"", "kind": 9, "detail": "Math utilities module", "insertText": "\"bolt:math\""}),
+                        json!({"label": "\"bolt:io\"", "kind": 9, "detail": "File I/O operations module", "insertText": "\"bolt:io\""}),
+                        json!({"label": "\"bolt:string\"", "kind": 9, "detail": "String utilities module", "insertText": "\"bolt:string\""}),
+                        // File I/O functions (bolt:io)
+                        json!({"label": "readFile", "kind": 3, "detail": "Read file contents: (path: String) -> String", "insertText": "readFile("}),
+                        json!({"label": "writeFile", "kind": 3, "detail": "Write file contents: (path: String, content: String) -> Bool", "insertText": "writeFile("}),
+                        json!({"label": "appendFile", "kind": 3, "detail": "Append to file: (path: String, content: String) -> Bool", "insertText": "appendFile("}),
+                        json!({"label": "deleteFile", "kind": 3, "detail": "Delete file: (path: String) -> Bool", "insertText": "deleteFile("}),
+                        json!({"label": "fileExists", "kind": 3, "detail": "Check if file exists: (path: String) -> Bool", "insertText": "fileExists("}),
+                        // String utilities (bolt:string)
+                        json!({"label": "length", "kind": 3, "detail": "Get string length: (s: String) -> Integer", "insertText": "length("}),
+                        json!({"label": "concat", "kind": 3, "detail": "Concatenate strings: (a: String, b: String) -> String", "insertText": "concat("}),
+                        json!({"label": "indexOf", "kind": 3, "detail": "Find substring index: (s: String, substr: String) -> Integer", "insertText": "indexOf("}),
+                        json!({"label": "contains", "kind": 3, "detail": "Check if string contains substring: (s: String, substr: String) -> Bool", "insertText": "contains("}),
+                        json!({"label": "trim", "kind": 3, "detail": "Remove whitespace: (s: String) -> String", "insertText": "trim("}),
                         // Built-in types
                         json!({"label": "Integer", "kind": 7, "detail": "Integer type", "insertText": "Integer"}),
                         json!({"label": "String", "kind": 7, "detail": "String type", "insertText": "String"}),
@@ -397,6 +416,12 @@ impl LspServer {
                         // Common patterns
                         json!({"label": "for in", "kind": 15, "detail": "For-in loop with Array[T]", "insertText": "for item in "}),
                         json!({"label": "type def", "kind": 15, "detail": "Generic type definition", "insertText": "type Name[T] = { data: T }"}),
+                        // Module import patterns
+                        json!({"label": "import io", "kind": 15, "detail": "Import file I/O functions", "insertText": "import { readFile, writeFile } from \"bolt:io\""}),
+                        json!({"label": "import string", "kind": 15, "detail": "Import string utilities", "insertText": "import { length, concat, contains } from \"bolt:string\""}),
+                        json!({"label": "import stdio", "kind": 15, "detail": "Import stdio functions", "insertText": "import { print } from \"bolt:stdio\""}),
+                        // Native code patterns
+                        json!({"label": "native C", "kind": 15, "detail": "Native C function block", "insertText": "native \"C\" {\\n    export fun functionName(param: Type): ReturnType\\n}"}),
                         // Literals
                         json!({"label": "true", "kind": 12, "detail": "Boolean true", "insertText": "true"}),
                         json!({"label": "false", "kind": 12, "detail": "Boolean false", "insertText": "false"}),
@@ -656,6 +681,15 @@ impl LspServer {
             "fun" => {
                 "**`fun`**\n\n*Keyword*\n\nDeclares a function.\n\n**Syntax:**\n```bolt\nfun name(param: Type): ReturnType {\n    // function body\n    return value\n}\n```\n\n**Example:**\n```bolt\nfun greet(name: String): String {\n    return \"Hello, \" + name\n}\n```".to_string()
             }
+            "native" => {
+                "**`native`**\n\n*Keyword*\n\nDeclares a native code block for inline C functions.\n\n**Syntax:**\n```bolt\nnative \"C\" {\n    export fun functionName(param: Type): ReturnType\n}\n```\n\n**Example:**\n```bolt\nnative \"C\" {\n    export fun add(a: Integer, b: Integer): Integer\n}\n```".to_string()
+            }
+            "export" => {
+                "**`export`**\n\n*Keyword*\n\nMarks a function as exported from a module.\n\n**Usage:**\n```bolt\nnative \"C\" {\n    export fun readFile(path: String): String\n}\n```".to_string()
+            }
+            "import" => {
+                "**`import`**\n\n*Keyword*\n\nImports functions from modules.\n\n**Syntax:**\n```bolt\nimport { functionName } from \"module\"\n```\n\n**Examples:**\n```bolt\nimport { print } from \"bolt:stdio\"\nimport { readFile, writeFile } from \"bolt:io\"\nimport { length, concat } from \"bolt:string\"\n```".to_string()
+            }
             "for" => {
                 "**`for`**\n\n*Keyword*\n\nLoop construct with multiple forms.\n\n**For-in loop:**\n```bolt\nfor item in array {\n    print(item)\n}\n```\n\n**Condition loop:**\n```bolt\nfor (condition) {\n    // code\n}\n```\n\n**Works with Array[T] types:**\n```bolt\nfor item in myGenericArray {\n    // item is correctly typed\n}\n```".to_string()
             }
@@ -676,6 +710,38 @@ impl LspServer {
             }
             "true" | "false" => {
                 format!("**`{}`**\n\n*Boolean literal*\n\nA boolean value representing {} condition.", word, if word == "true" { "a true" } else { "a false" })
+            }
+            // File I/O functions (bolt:io)
+            "readFile" => {
+                "**`readFile(path: String): String`**\n\n*File I/O Function*\n\nReads the contents of a file.\n\n**Usage:**\n```bolt\nimport { readFile } from \"bolt:io\"\n\nval content := readFile(\"example.txt\")\nprint(content)\n```".to_string()
+            }
+            "writeFile" => {
+                "**`writeFile(path: String, content: String): Bool`**\n\n*File I/O Function*\n\nWrites content to a file, returns success status.\n\n**Usage:**\n```bolt\nimport { writeFile } from \"bolt:io\"\n\nval success := writeFile(\"output.txt\", \"Hello, World!\")\nif (success) {\n    print(\"File written successfully\")\n}\n```".to_string()
+            }
+            "appendFile" => {
+                "**`appendFile(path: String, content: String): Bool`**\n\n*File I/O Function*\n\nAppends content to an existing file.\n\n**Usage:**\n```bolt\nimport { appendFile } from \"bolt:io\"\n\nval success := appendFile(\"log.txt\", \"New log entry\")\n```".to_string()
+            }
+            "deleteFile" => {
+                "**`deleteFile(path: String): Bool`**\n\n*File I/O Function*\n\nDeletes a file, returns success status.\n\n**Usage:**\n```bolt\nimport { deleteFile } from \"bolt:io\"\n\nval success := deleteFile(\"temp.txt\")\n```".to_string()
+            }
+            "fileExists" => {
+                "**`fileExists(path: String): Bool`**\n\n*File I/O Function*\n\nChecks if a file exists.\n\n**Usage:**\n```bolt\nimport { fileExists } from \"bolt:io\"\n\nif (fileExists(\"config.txt\")) {\n    // file exists, proceed\n}\n```".to_string()
+            }
+            // String utility functions (bolt:string)
+            "length" => {
+                "**`length(s: String): Integer`**\n\n*String Utility Function*\n\nReturns the length of a string.\n\n**Usage:**\n```bolt\nimport { length } from \"bolt:string\"\n\nval text := \"Hello, World!\"\nval len := length(text)  // returns 13\n```".to_string()
+            }
+            "concat" => {
+                "**`concat(a: String, b: String): String`**\n\n*String Utility Function*\n\nConcatenates two strings.\n\n**Usage:**\n```bolt\nimport { concat } from \"bolt:string\"\n\nval greeting := concat(\"Hello, \", \"World!\")\nprint(greeting)  // prints \"Hello, World!\"\n```".to_string()
+            }
+            "indexOf" => {
+                "**`indexOf(s: String, substr: String): Integer`**\n\n*String Utility Function*\n\nFinds the index of a substring, returns -1 if not found.\n\n**Usage:**\n```bolt\nimport { indexOf } from \"bolt:string\"\n\nval text := \"Hello, World!\"\nval index := indexOf(text, \"World\")  // returns 7\n```".to_string()
+            }
+            "contains" => {
+                "**`contains(s: String, substr: String): Bool`**\n\n*String Utility Function*\n\nChecks if a string contains a substring.\n\n**Usage:**\n```bolt\nimport { contains } from \"bolt:string\"\n\nval text := \"Hello, World!\"\nval hasWorld := contains(text, \"World\")  // returns true\n```".to_string()
+            }
+            "trim" => {
+                "**`trim(s: String): String`**\n\n*String Utility Function*\n\nRemoves leading and trailing whitespace.\n\n**Usage:**\n```bolt\nimport { trim } from \"bolt:string\"\n\nval text := \"  hello world  \"\nval trimmed := trim(text)  // returns \"hello world\"\n```".to_string()
             }
             _ => {
                 // Check if it's a function by looking for function declarations
