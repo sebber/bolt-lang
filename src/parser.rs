@@ -1165,7 +1165,6 @@ impl Parser {
         }
     }
 
-
     fn parse_export(&mut self) -> Statement {
         self.advance(); // consume 'export'
 

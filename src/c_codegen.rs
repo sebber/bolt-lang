@@ -1246,7 +1246,9 @@ impl CCodeGen {
                                             "char*"
                                         } else if array_type.contains("Array_Bool") {
                                             "int" // bool as int
-                                        } else if let Some(stripped) = array_type.strip_prefix("Array_") {
+                                        } else if let Some(stripped) =
+                                            array_type.strip_prefix("Array_")
+                                        {
                                             // Custom type like Array_Person -> Person
                                             stripped // Remove "Array_" prefix
                                         } else {
