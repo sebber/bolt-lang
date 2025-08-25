@@ -1,0 +1,77 @@
+// Simple word counter application demonstrating file I/O and string utilities
+import { print } from "bolt:stdio"
+import { readFile, writeFile, deleteFile } from "bolt:io"
+import { length, concat, indexOf, contains } from "bolt:string"
+
+fun main(): Integer {
+    print("=== Word Counter Application ===")
+    
+    // Create a sample text file
+    val sample_text := "The quick brown fox jumps over the lazy dog. The dog was sleeping."
+    val success := writeFile("sample.txt", sample_text)
+    
+    if (!success) {
+        print("Failed to create sample file")
+        return 1
+    }
+    
+    print("Created sample file with text:")
+    print(sample_text)
+    print("")
+    
+    // Read the file back
+    val content := readFile("sample.txt")
+    val file_length := length(content)
+    print("File content length:")
+    print(toString(file_length))
+    print("")
+    
+    // Test string analysis
+    print("String analysis:")
+    val has_fox := contains(content, "fox")
+    val has_dog := contains(content, "dog")
+    val has_cat := contains(content, "cat")
+    
+    if (has_fox) {
+        print("File contains 'fox'")
+        val fox_position := indexOf(content, "fox")
+        print("Position of 'fox':")
+        print(toString(fox_position))
+    }
+    
+    if (has_dog) {
+        print("File contains 'dog'")
+        val dog_position := indexOf(content, "dog")
+        print("Position of 'dog':")
+        print(toString(dog_position))
+    }
+    
+    if (!has_cat) {
+        print("File does not contain 'cat'")
+    }
+    
+    // Create simple report inline
+    val header := "=== WORD ANALYSIS REPORT ==="
+    val space := " "
+    val footer := "=========================="
+    
+    val line1 := concat(header, space)
+    val line2 := concat(line1, "Analysis complete")
+    val line3 := concat(line2, space)
+    val report := concat(line3, footer)
+    
+    val report_success := writeFile("word_report.txt", report)
+    
+    if (report_success) {
+        print("Word analysis report saved to word_report.txt")
+        print("Report content:")
+        print(report)
+    }
+    
+    // Clean up files
+    deleteFile("sample.txt")
+    deleteFile("word_report.txt")
+    print("Cleanup complete!")
+    
+    return 0
+}

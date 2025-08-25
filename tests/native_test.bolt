@@ -1,0 +1,12 @@
+import { print } from "bolt:stdio"
+
+native "C" {
+    export fun testFunction(x: Integer): Integer
+}
+
+fun main(): Integer {
+    val result := testFunction(42)
+    print("Test result:")
+    print(toString(result))
+    return 0
+}

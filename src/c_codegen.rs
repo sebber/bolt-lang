@@ -1,4 +1,4 @@
-use crate::ast::{BinaryOperator, Expression, Field, Program, Statement, Type, UnaryOperator};
+use crate::ast::{BinaryOperator, Expression, NativeFunction, Field, Program, Statement, Type, UnaryOperator};
 use crate::module::ModuleSystem;
 use crate::symbol_table::SymbolTable;
 use std::collections::{HashMap, HashSet};
@@ -506,6 +506,12 @@ impl CCodeGen {
                     // Skip import/export statements in code generation
                     // They're handled by the module system
                 }
+                Statement::NativeBlock { language, functions } => {
+                    // Handle native function implementations
+                    if language == "C" {
+                        self.compile_native_c_functions(&functions, &mut result);
+                    }
+                }
                 _ => {
                     remaining_statements.push(statement);
                 }
@@ -561,17 +567,30 @@ impl CCodeGen {
         result
     }
 
-    fn compile_all_module_functions(&mut self, module_system: &ModuleSystem, _result: &mut String) {
+    fn compile_all_module_functions(&mut self, module_system: &ModuleSystem, result: &mut String) {
         let all_functions = module_system.get_all_functions();
 
         for (function_name, module_path) in all_functions {
             if let Some(module_program) = module_system.get_module(&module_path) {
                 for statement in &module_program.statements {
-                    if let Statement::Function { name, .. } = statement {
-                        if name == &function_name {
-                            self.compile_function(statement.clone());
-                            break;
+                    match statement {
+                        Statement::Function { name, .. } => {
+                            if name == &function_name {
+                                self.compile_function(statement.clone());
+                                break;
+                            }
                         }
+                        Statement::NativeBlock { language, functions } => {
+                            // Check if any of the native functions match the requested function
+                            for native_func in functions {
+                                if native_func.name == function_name && language == "C" {
+                                    // Generate just this specific function
+                                    self.compile_single_native_c_function(native_func, result);
+                                    break;
+                                }
+                            }
+                        }
+                        _ => {} // Ignore other statement types
                     }
                 }
             }
@@ -616,6 +635,22 @@ impl CCodeGen {
                             self.main_code
                                 .push_str(&format!("    char** {} = {};\n", name, call_str));
                             self.variables.insert(name, "getargs".to_string());
+                        } else if func_name == "readFile" {
+                            self.main_code
+                                .push_str(&format!("    char* {} = {};\n", name, call_str));
+                            self.variables.insert(name, "string".to_string());
+                        } else if func_name == "writeFile" || func_name == "appendFile" || func_name == "fileExists" || func_name == "deleteFile" {
+                            self.main_code
+                                .push_str(&format!("    int {} = {};\n", name, call_str));
+                            self.variables.insert(name, "bool".to_string()); // These return boolean values
+                        } else if func_name == "concat" || func_name == "trim" {
+                            self.main_code
+                                .push_str(&format!("    char* {} = {};\n", name, call_str));
+                            self.variables.insert(name, "string".to_string()); // These return strings
+                        } else if func_name == "length" || func_name == "indexOf" || func_name == "contains" {
+                            self.main_code
+                                .push_str(&format!("    int {} = {};\n", name, call_str));
+                            self.variables.insert(name, if func_name == "contains" { "bool".to_string() } else { "int".to_string() });
                         } else {
                             self.main_code
                                 .push_str(&format!("    int {} = {};\n", name, call_str));
@@ -795,6 +830,22 @@ impl CCodeGen {
                             self.main_code
                                 .push_str(&format!("    char** {} = {};\n", name, call_str));
                             self.variables.insert(name, "getargs".to_string());
+                        } else if func_name == "readFile" {
+                            self.main_code
+                                .push_str(&format!("    char* {} = {};\n", name, call_str));
+                            self.variables.insert(name, "string".to_string());
+                        } else if func_name == "writeFile" || func_name == "appendFile" || func_name == "fileExists" || func_name == "deleteFile" {
+                            self.main_code
+                                .push_str(&format!("    int {} = {};\n", name, call_str));
+                            self.variables.insert(name, "bool".to_string()); // These return boolean values
+                        } else if func_name == "concat" || func_name == "trim" {
+                            self.main_code
+                                .push_str(&format!("    char* {} = {};\n", name, call_str));
+                            self.variables.insert(name, "string".to_string()); // These return strings
+                        } else if func_name == "length" || func_name == "indexOf" || func_name == "contains" {
+                            self.main_code
+                                .push_str(&format!("    int {} = {};\n", name, call_str));
+                            self.variables.insert(name, if func_name == "contains" { "bool".to_string() } else { "int".to_string() });
                         } else {
                             self.main_code
                                 .push_str(&format!("    int {} = {};\n", name, call_str));
@@ -1522,6 +1573,61 @@ impl CCodeGen {
                     format!("toString({})", arg_str)
                 } else if name == "getArgs" && args.is_empty() {
                     "getArgs()".to_string()
+                } else if name == "readFile" && args.len() == 1 {
+                    let arg = args.into_iter().next().unwrap();
+                    let arg_str = self.compile_expression_to_string(arg);
+                    format!("readFile({})", arg_str)
+                } else if name == "writeFile" && args.len() == 2 {
+                    let mut arg_iter = args.into_iter();
+                    let path_arg = arg_iter.next().unwrap();
+                    let content_arg = arg_iter.next().unwrap();
+                    let path_str = self.compile_expression_to_string(path_arg);
+                    let content_str = self.compile_expression_to_string(content_arg);
+                    format!("writeFile({}, {})", path_str, content_str)
+                } else if name == "appendFile" && args.len() == 2 {
+                    let mut arg_iter = args.into_iter();
+                    let path_arg = arg_iter.next().unwrap();
+                    let content_arg = arg_iter.next().unwrap();
+                    let path_str = self.compile_expression_to_string(path_arg);
+                    let content_str = self.compile_expression_to_string(content_arg);
+                    format!("appendFile({}, {})", path_str, content_str)
+                } else if name == "fileExists" && args.len() == 1 {
+                    let arg = args.into_iter().next().unwrap();
+                    let arg_str = self.compile_expression_to_string(arg);
+                    format!("fileExists({})", arg_str)
+                } else if name == "deleteFile" && args.len() == 1 {
+                    let arg = args.into_iter().next().unwrap();
+                    let arg_str = self.compile_expression_to_string(arg);
+                    format!("deleteFile({})", arg_str)
+                } else if name == "length" && args.len() == 1 {
+                    let arg = args.into_iter().next().unwrap();
+                    let arg_str = self.compile_expression_to_string(arg);
+                    format!("length({})", arg_str)
+                } else if name == "concat" && args.len() == 2 {
+                    let mut arg_iter = args.into_iter();
+                    let str1_arg = arg_iter.next().unwrap();
+                    let str2_arg = arg_iter.next().unwrap();
+                    let str1_str = self.compile_expression_to_string(str1_arg);
+                    let str2_str = self.compile_expression_to_string(str2_arg);
+                    format!("concat({}, {})", str1_str, str2_str)
+                } else if name == "indexOf" && args.len() == 2 {
+                    let mut arg_iter = args.into_iter();
+                    let str_arg = arg_iter.next().unwrap();
+                    let substr_arg = arg_iter.next().unwrap();
+                    let str_str = self.compile_expression_to_string(str_arg);
+                    let substr_str = self.compile_expression_to_string(substr_arg);
+                    format!("indexOf({}, {})", str_str, substr_str)
+                } else if name == "contains" && args.len() == 2 {
+                    let mut arg_iter = args.into_iter();
+                    let str_arg = arg_iter.next().unwrap();
+                    let substr_arg = arg_iter.next().unwrap();
+                    let str_str = self.compile_expression_to_string(str_arg);
+                    let substr_str = self.compile_expression_to_string(substr_arg);
+                    format!("contains({}, {})", str_str, substr_str)
+                } else if name == "trim" && args.len() == 1 {
+                    let arg = args.into_iter().next().unwrap();
+                    let arg_str = self.compile_expression_to_string(arg);
+                    format!("trim({})", arg_str)
                 } else if name == "print" && args.len() == 1 {
                     let arg = args.into_iter().next().unwrap();
                     match arg {
@@ -1820,6 +1926,316 @@ impl CCodeGen {
             _ => "0".to_string(), // fallback
         }
     }
+
+    fn compile_native_c_functions(&self, functions: &[NativeFunction], result: &mut String) {
+        for function in functions {
+            match function.name.as_str() {
+                "readFile" => {
+                    result.push_str("char* readFile(const char* path) {\n");
+                    result.push_str("    FILE* file = fopen(path, \"r\");\n");
+                    result.push_str("    if (!file) return \"\";\n");
+                    result.push_str("    fseek(file, 0, SEEK_END);\n");
+                    result.push_str("    long length = ftell(file);\n");
+                    result.push_str("    fseek(file, 0, SEEK_SET);\n");
+                    result.push_str("    char* content = malloc(length + 1);\n");
+                    result.push_str("    fread(content, 1, length, file);\n");
+                    result.push_str("    content[length] = '\\0';\n");
+                    result.push_str("    fclose(file);\n");
+                    result.push_str("    return content;\n");
+                    result.push_str("}\n\n");
+                },
+                "writeFile" => {
+                    result.push_str("int writeFile(const char* path, const char* content) {\n");
+                    result.push_str("    FILE* file = fopen(path, \"w\");\n");
+                    result.push_str("    if (!file) return 0;\n");
+                    result.push_str("    fputs(content, file);\n");
+                    result.push_str("    fclose(file);\n");
+                    result.push_str("    return 1;\n");
+                    result.push_str("}\n\n");
+                },
+                "appendFile" => {
+                    result.push_str("int appendFile(const char* path, const char* content) {\n");
+                    result.push_str("    FILE* file = fopen(path, \"a\");\n");
+                    result.push_str("    if (!file) return 0;\n");
+                    result.push_str("    fputs(content, file);\n");
+                    result.push_str("    fclose(file);\n");
+                    result.push_str("    return 1;\n");
+                    result.push_str("}\n\n");
+                },
+                "fileExists" => {
+                    result.push_str("int fileExists(const char* path) {\n");
+                    result.push_str("    FILE* file = fopen(path, \"r\");\n");
+                    result.push_str("    if (file) {\n");
+                    result.push_str("        fclose(file);\n");
+                    result.push_str("        return 1;\n");
+                    result.push_str("    }\n");
+                    result.push_str("    return 0;\n");
+                    result.push_str("}\n\n");
+                },
+                "deleteFile" => {
+                    result.push_str("int deleteFile(const char* path) {\n");
+                    result.push_str("    return remove(path) == 0 ? 1 : 0;\n");
+                    result.push_str("}\n\n");
+                },
+                "length" => {
+                    result.push_str("int length(const char* str) {\n");
+                    result.push_str("    return strlen(str);\n");
+                    result.push_str("}\n\n");
+                },
+                "concat" => {
+                    result.push_str("char* concat(const char* str1, const char* str2) {\n");
+                    result.push_str("    return string_concat(str1, str2);\n");
+                    result.push_str("}\n\n");
+                },
+                "indexOf" => {
+                    result.push_str("int indexOf(const char* str, const char* substr) {\n");
+                    result.push_str("    char* pos = strstr(str, substr);\n");
+                    result.push_str("    return pos ? (int)(pos - str) : -1;\n");
+                    result.push_str("}\n\n");
+                },
+                "contains" => {
+                    result.push_str("int contains(const char* str, const char* substr) {\n");
+                    result.push_str("    return strstr(str, substr) != NULL ? 1 : 0;\n");
+                    result.push_str("}\n\n");
+                },
+                "trim" => {
+                    result.push_str("char* trim(const char* str) {\n");
+                    result.push_str("    const char* start = str;\n");
+                    result.push_str("    const char* end = str + strlen(str) - 1;\n");
+                    result.push_str("    while (*start && (*start == ' ' || *start == '\\t' || *start == '\\n' || *start == '\\r')) start++;\n");
+                    result.push_str("    while (end > start && (*end == ' ' || *end == '\\t' || *end == '\\n' || *end == '\\r')) end--;\n");
+                    result.push_str("    size_t len = end - start + 1;\n");
+                    result.push_str("    char* result = malloc(len + 1);\n");
+                    result.push_str("    strncpy(result, start, len);\n");
+                    result.push_str("    result[len] = '\\0';\n");
+                    result.push_str("    return result;\n");
+                    result.push_str("}\n\n");
+                },
+                _ => {
+                    // For unknown functions, generate a stub that returns appropriate default
+                    if let Some(return_type) = &function.return_type {
+                        match return_type {
+                            Type::Integer => {
+                                result.push_str(&format!("int {}(", function.name));
+                                for (i, param) in function.params.iter().enumerate() {
+                                    if i > 0 { result.push_str(", "); }
+                                    result.push_str(&self.param_to_c_type(&param.param_type));
+                                    result.push_str(&format!(" {}", param.name));
+                                }
+                                result.push_str(") {\n");
+                                result.push_str("    return 0; // Stub implementation\n");
+                                result.push_str("}\n\n");
+                            },
+                            Type::String => {
+                                result.push_str(&format!("char* {}(", function.name));
+                                for (i, param) in function.params.iter().enumerate() {
+                                    if i > 0 { result.push_str(", "); }
+                                    result.push_str(&self.param_to_c_type(&param.param_type));
+                                    result.push_str(&format!(" {}", param.name));
+                                }
+                                result.push_str(") {\n");
+                                result.push_str("    return \"\"; // Stub implementation\n");
+                                result.push_str("}\n\n");
+                            },
+                            Type::Bool => {
+                                result.push_str(&format!("int {}(", function.name));
+                                for (i, param) in function.params.iter().enumerate() {
+                                    if i > 0 { result.push_str(", "); }
+                                    result.push_str(&self.param_to_c_type(&param.param_type));
+                                    result.push_str(&format!(" {}", param.name));
+                                }
+                                result.push_str(") {\n");
+                                result.push_str("    return 0; // Stub implementation\n");
+                                result.push_str("}\n\n");
+                            },
+                            _ => {
+                                // Default void function
+                                result.push_str(&format!("void {}(", function.name));
+                                for (i, param) in function.params.iter().enumerate() {
+                                    if i > 0 { result.push_str(", "); }
+                                    result.push_str(&self.param_to_c_type(&param.param_type));
+                                    result.push_str(&format!(" {}", param.name));
+                                }
+                                result.push_str(") {\n");
+                                result.push_str("    // Stub implementation\n");
+                                result.push_str("}\n\n");
+                            }
+                        }
+                    } else {
+                        // Void function
+                        result.push_str(&format!("void {}(", function.name));
+                        for (i, param) in function.params.iter().enumerate() {
+                            if i > 0 { result.push_str(", "); }
+                            result.push_str(&self.param_to_c_type(&param.param_type));
+                            result.push_str(&format!(" {}", param.name));
+                        }
+                        result.push_str(") {\n");
+                        result.push_str("    // Stub implementation\n");
+                        result.push_str("}\n\n");
+                    }
+                }
+            }
+        }
+    }
+
+    fn compile_single_native_c_function(&self, function: &NativeFunction, result: &mut String) {
+        // Extract just the function generation logic from compile_native_c_functions
+        match function.name.as_str() {
+            "readFile" => {
+                result.push_str("char* readFile(const char* path) {\n");
+                result.push_str("    FILE* file = fopen(path, \"r\");\n");
+                result.push_str("    if (!file) return \"\";\n");
+                result.push_str("    fseek(file, 0, SEEK_END);\n");
+                result.push_str("    long length = ftell(file);\n");
+                result.push_str("    fseek(file, 0, SEEK_SET);\n");
+                result.push_str("    char* content = malloc(length + 1);\n");
+                result.push_str("    fread(content, 1, length, file);\n");
+                result.push_str("    content[length] = '\\0';\n");
+                result.push_str("    fclose(file);\n");
+                result.push_str("    return content;\n");
+                result.push_str("}\n\n");
+            },
+            "writeFile" => {
+                result.push_str("int writeFile(const char* path, const char* content) {\n");
+                result.push_str("    FILE* file = fopen(path, \"w\");\n");
+                result.push_str("    if (!file) return 0;\n");
+                result.push_str("    fputs(content, file);\n");
+                result.push_str("    fclose(file);\n");
+                result.push_str("    return 1;\n");
+                result.push_str("}\n\n");
+            },
+            "appendFile" => {
+                result.push_str("int appendFile(const char* path, const char* content) {\n");
+                result.push_str("    FILE* file = fopen(path, \"a\");\n");
+                result.push_str("    if (!file) return 0;\n");
+                result.push_str("    fputs(content, file);\n");
+                result.push_str("    fclose(file);\n");
+                result.push_str("    return 1;\n");
+                result.push_str("}\n\n");
+            },
+            "fileExists" => {
+                result.push_str("int fileExists(const char* path) {\n");
+                result.push_str("    FILE* file = fopen(path, \"r\");\n");
+                result.push_str("    if (file) {\n");
+                result.push_str("        fclose(file);\n");
+                result.push_str("        return 1;\n");
+                result.push_str("    }\n");
+                result.push_str("    return 0;\n");
+                result.push_str("}\n\n");
+            },
+            "deleteFile" => {
+                result.push_str("int deleteFile(const char* path) {\n");
+                result.push_str("    return remove(path) == 0 ? 1 : 0;\n");
+                result.push_str("}\n\n");
+            },
+            "length" => {
+                result.push_str("int length(const char* str) {\n");
+                result.push_str("    return strlen(str);\n");
+                result.push_str("}\n\n");
+            },
+            "concat" => {
+                result.push_str("char* concat(const char* str1, const char* str2) {\n");
+                result.push_str("    return string_concat(str1, str2);\n");
+                result.push_str("}\n\n");
+            },
+            "indexOf" => {
+                result.push_str("int indexOf(const char* str, const char* substr) {\n");
+                result.push_str("    char* pos = strstr(str, substr);\n");
+                result.push_str("    return pos ? (int)(pos - str) : -1;\n");
+                result.push_str("}\n\n");
+            },
+            "contains" => {
+                result.push_str("int contains(const char* str, const char* substr) {\n");
+                result.push_str("    return strstr(str, substr) != NULL ? 1 : 0;\n");
+                result.push_str("}\n\n");
+            },
+            "trim" => {
+                result.push_str("char* trim(const char* str) {\n");
+                result.push_str("    const char* start = str;\n");
+                result.push_str("    const char* end = str + strlen(str) - 1;\n");
+                result.push_str("    while (*start && (*start == ' ' || *start == '\\t' || *start == '\\n' || *start == '\\r')) start++;\n");
+                result.push_str("    while (end > start && (*end == ' ' || *end == '\\t' || *end == '\\n' || *end == '\\r')) end--;\n");
+                result.push_str("    size_t len = end - start + 1;\n");
+                result.push_str("    char* result = malloc(len + 1);\n");
+                result.push_str("    strncpy(result, start, len);\n");
+                result.push_str("    result[len] = '\\0';\n");
+                result.push_str("    return result;\n");
+                result.push_str("}\n\n");
+            },
+            _ => {
+                // For unknown functions, generate a stub that returns appropriate default
+                if let Some(return_type) = &function.return_type {
+                    match return_type {
+                        Type::Integer => {
+                            result.push_str(&format!("int {}(", function.name));
+                            for (i, param) in function.params.iter().enumerate() {
+                                if i > 0 { result.push_str(", "); }
+                                result.push_str(&self.param_to_c_type(&param.param_type));
+                                result.push_str(&format!(" {}", param.name));
+                            }
+                            result.push_str(") {\n");
+                            result.push_str("    return 0; // Stub implementation\n");
+                            result.push_str("}\n\n");
+                        },
+                        Type::String => {
+                            result.push_str(&format!("char* {}(", function.name));
+                            for (i, param) in function.params.iter().enumerate() {
+                                if i > 0 { result.push_str(", "); }
+                                result.push_str(&self.param_to_c_type(&param.param_type));
+                                result.push_str(&format!(" {}", param.name));
+                            }
+                            result.push_str(") {\n");
+                            result.push_str("    return \"\"; // Stub implementation\n");
+                            result.push_str("}\n\n");
+                        },
+                        Type::Bool => {
+                            result.push_str(&format!("int {}(", function.name));
+                            for (i, param) in function.params.iter().enumerate() {
+                                if i > 0 { result.push_str(", "); }
+                                result.push_str(&self.param_to_c_type(&param.param_type));
+                                result.push_str(&format!(" {}", param.name));
+                            }
+                            result.push_str(") {\n");
+                            result.push_str("    return 0; // Stub implementation\n");
+                            result.push_str("}\n\n");
+                        },
+                        _ => {
+                            // Default void function
+                            result.push_str(&format!("void {}(", function.name));
+                            for (i, param) in function.params.iter().enumerate() {
+                                if i > 0 { result.push_str(", "); }
+                                result.push_str(&self.param_to_c_type(&param.param_type));
+                                result.push_str(&format!(" {}", param.name));
+                            }
+                            result.push_str(") {\n");
+                            result.push_str("    // Stub implementation\n");
+                            result.push_str("}\n\n");
+                        }
+                    }
+                } else {
+                    // Void function
+                    result.push_str(&format!("void {}(", function.name));
+                    for (i, param) in function.params.iter().enumerate() {
+                        if i > 0 { result.push_str(", "); }
+                        result.push_str(&self.param_to_c_type(&param.param_type));
+                        result.push_str(&format!(" {}", param.name));
+                    }
+                    result.push_str(") {\n");
+                    result.push_str("    // Stub implementation\n");
+                    result.push_str("}\n\n");
+                }
+            }
+        }
+    }
+
+    fn param_to_c_type(&self, bolt_type: &Type) -> &str {
+        match bolt_type {
+            Type::String => "const char*",
+            Type::Integer => "int",
+            Type::Bool => "int",
+            _ => "void*", // fallback
+        }
+    }
 }
 
 #[cfg(test)]
@@ -2031,5 +2447,205 @@ mod tests {
         
         let result = codegen.compile_expression_to_string(expr);
         assert_eq!(result, "toString(getArgsLength())");
+    }
+
+    #[test]
+    fn test_readfile_function_call() {
+        let mut codegen = setup_codegen();
+        
+        let expr = Expression::FunctionCall {
+            name: "readFile".to_string(),
+            args: vec![Expression::StringLiteral("test.txt".to_string())],
+        };
+        
+        let result = codegen.compile_expression_to_string(expr);
+        assert_eq!(result, "readFile(\"test.txt\")");
+    }
+
+    #[test]
+    fn test_writefile_function_call() {
+        let mut codegen = setup_codegen();
+        
+        let expr = Expression::FunctionCall {
+            name: "writeFile".to_string(),
+            args: vec![
+                Expression::StringLiteral("output.txt".to_string()),
+                Expression::StringLiteral("Hello, World!".to_string()),
+            ],
+        };
+        
+        let result = codegen.compile_expression_to_string(expr);
+        assert_eq!(result, "writeFile(\"output.txt\", \"Hello, World!\")");
+    }
+
+    #[test]
+    fn test_file_io_variable_assignments() {
+        let mut codegen = setup_codegen();
+        
+        // Test readFile assignment
+        let read_decl = Statement::ValDecl {
+            name: "content".to_string(),
+            type_annotation: None,
+            value: Expression::FunctionCall {
+                name: "readFile".to_string(),
+                args: vec![Expression::StringLiteral("input.txt".to_string())],
+            },
+        };
+        
+        codegen.compile_main_statement(read_decl);
+        
+        // Check that readFile result is tracked as string type
+        assert_eq!(codegen.variables.get("content"), Some(&"string".to_string()));
+        assert!(codegen.main_code.contains("char* content = readFile(\"input.txt\");"));
+        
+        // Test writeFile assignment
+        let write_decl = Statement::ValDecl {
+            name: "success".to_string(),
+            type_annotation: None,
+            value: Expression::FunctionCall {
+                name: "writeFile".to_string(),
+                args: vec![
+                    Expression::StringLiteral("output.txt".to_string()),
+                    Expression::StringLiteral("test content".to_string()),
+                ],
+            },
+        };
+        
+        codegen.compile_main_statement(write_decl);
+        
+        // Check that writeFile result is tracked as bool type
+        assert_eq!(codegen.variables.get("success"), Some(&"bool".to_string()));
+        assert!(codegen.main_code.contains("int success = writeFile(\"output.txt\", \"test content\");"));
+    }
+
+    #[test]
+    fn test_file_exists_and_delete_functions() {
+        let mut codegen = setup_codegen();
+        
+        // Test fileExists
+        let exists_expr = Expression::FunctionCall {
+            name: "fileExists".to_string(),
+            args: vec![Expression::StringLiteral("test.txt".to_string())],
+        };
+        
+        let result = codegen.compile_expression_to_string(exists_expr);
+        assert_eq!(result, "fileExists(\"test.txt\")");
+        
+        // Test deleteFile
+        let delete_expr = Expression::FunctionCall {
+            name: "deleteFile".to_string(),
+            args: vec![Expression::StringLiteral("temp.txt".to_string())],
+        };
+        
+        let result = codegen.compile_expression_to_string(delete_expr);
+        assert_eq!(result, "deleteFile(\"temp.txt\")");
+    }
+
+    #[test]
+    fn test_string_utility_functions() {
+        let mut codegen = setup_codegen();
+        
+        // Test length function
+        let length_expr = Expression::FunctionCall {
+            name: "length".to_string(),
+            args: vec![Expression::StringLiteral("hello".to_string())],
+        };
+        assert_eq!(codegen.compile_expression_to_string(length_expr), "length(\"hello\")");
+        
+        // Test concat function
+        let concat_expr = Expression::FunctionCall {
+            name: "concat".to_string(),
+            args: vec![
+                Expression::StringLiteral("hello".to_string()),
+                Expression::StringLiteral(" world".to_string()),
+            ],
+        };
+        assert_eq!(codegen.compile_expression_to_string(concat_expr), "concat(\"hello\", \" world\")");
+        
+        // Test indexOf function
+        let indexof_expr = Expression::FunctionCall {
+            name: "indexOf".to_string(),
+            args: vec![
+                Expression::StringLiteral("hello world".to_string()),
+                Expression::StringLiteral("world".to_string()),
+            ],
+        };
+        assert_eq!(codegen.compile_expression_to_string(indexof_expr), "indexOf(\"hello world\", \"world\")");
+        
+        // Test contains function
+        let contains_expr = Expression::FunctionCall {
+            name: "contains".to_string(),
+            args: vec![
+                Expression::StringLiteral("hello world".to_string()),
+                Expression::StringLiteral("world".to_string()),
+            ],
+        };
+        assert_eq!(codegen.compile_expression_to_string(contains_expr), "contains(\"hello world\", \"world\")");
+        
+        // Test trim function
+        let trim_expr = Expression::FunctionCall {
+            name: "trim".to_string(),
+            args: vec![Expression::StringLiteral("  hello world  ".to_string())],
+        };
+        assert_eq!(codegen.compile_expression_to_string(trim_expr), "trim(\"  hello world  \")");
+    }
+
+    #[test]
+    fn test_string_utility_variable_assignments() {
+        let mut codegen = setup_codegen();
+        
+        // Test concat assignment
+        let concat_decl = Statement::ValDecl {
+            name: "result".to_string(),
+            type_annotation: None,
+            value: Expression::FunctionCall {
+                name: "concat".to_string(),
+                args: vec![
+                    Expression::StringLiteral("Hello, ".to_string()),
+                    Expression::StringLiteral("World!".to_string()),
+                ],
+            },
+        };
+        
+        codegen.compile_main_statement(concat_decl);
+        
+        // Check that concat result is tracked as string type
+        assert_eq!(codegen.variables.get("result"), Some(&"string".to_string()));
+        assert!(codegen.main_code.contains("char* result = concat(\"Hello, \", \"World!\");"));
+        
+        // Test length assignment
+        let length_decl = Statement::ValDecl {
+            name: "len".to_string(),
+            type_annotation: None,
+            value: Expression::FunctionCall {
+                name: "length".to_string(),
+                args: vec![Expression::StringLiteral("test".to_string())],
+            },
+        };
+        
+        codegen.compile_main_statement(length_decl);
+        
+        // Check that length result is tracked as int type
+        assert_eq!(codegen.variables.get("len"), Some(&"int".to_string()));
+        assert!(codegen.main_code.contains("int len = length(\"test\");"));
+        
+        // Test contains assignment
+        let contains_decl = Statement::ValDecl {
+            name: "found".to_string(),
+            type_annotation: None,
+            value: Expression::FunctionCall {
+                name: "contains".to_string(),
+                args: vec![
+                    Expression::StringLiteral("hello world".to_string()),
+                    Expression::StringLiteral("world".to_string()),
+                ],
+            },
+        };
+        
+        codegen.compile_main_statement(contains_decl);
+        
+        // Check that contains result is tracked as bool type
+        assert_eq!(codegen.variables.get("found"), Some(&"bool".to_string()));
+        assert!(codegen.main_code.contains("int found = contains(\"hello world\", \"world\");"));
     }
 }

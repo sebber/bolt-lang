@@ -1,0 +1,130 @@
+// Comprehensive example demonstrating Bolt's module system
+// This program showcases file I/O and string utilities working together
+
+import { print } from "bolt:stdio"
+import { readFile, writeFile, appendFile, fileExists, deleteFile } from "bolt:io"
+import { length, concat, indexOf, contains, trim } from "bolt:string"
+
+fun main(): Integer {
+    print("=== Bolt Text Processor ===")
+    print("")
+    
+    // Create sample documents
+    createSampleFiles()
+    
+    // Process each file
+    processFile("document1.txt")
+    processFile("document2.txt")
+    
+    // Create a summary report
+    createSummaryReport()
+    
+    // Cleanup
+    cleanup()
+    
+    print("Text processing complete!")
+    return 0
+}
+
+fun createSampleFiles(): Integer {
+    print("Creating sample files...")
+    
+    val doc1 := "  Hello, Bolt!  This is the first document.  It contains some text with whitespace.  "
+    val doc2 := "Welcome to Bolt programming language! This is document number two. Bolt makes native functions easy!"
+    
+    writeFile("document1.txt", doc1)
+    writeFile("document2.txt", doc2)
+    
+    print("Sample files created.")
+    return 0
+}
+
+fun processFile(filename: String): Integer {
+    print(concat("Processing: ", filename))
+    
+    if (!fileExists(filename)) {
+        print("File does not exist!")
+        return 1
+    }
+    
+    // Read and analyze the file
+    val content := readFile(filename)
+    val original_length := length(content)
+    
+    // Clean up the text (trim whitespace)
+    val cleaned := trim(content)
+    val cleaned_length := length(cleaned)
+    
+    // Analyze content
+    val has_bolt := contains(cleaned, "Bolt")
+    val has_document := contains(cleaned, "document")
+    val bolt_position := indexOf(cleaned, "Bolt")
+    
+    // Create analysis report
+    val report := createAnalysisReport(filename, original_length, cleaned_length, has_bolt, has_document, bolt_position)
+    
+    // Save cleaned version
+    val cleaned_filename := concat("cleaned_", filename)
+    writeFile(cleaned_filename, cleaned)
+    
+    // Append analysis to report file
+    appendFile("analysis_report.txt", report)
+    
+    print(concat("Processed ", filename))
+    return 0
+}
+
+fun createAnalysisReport(filename: String, original_len: Integer, cleaned_len: Integer, has_bolt: Bool, has_doc: Bool, bolt_pos: Integer): String {
+    val header := concat("=== Analysis Report for ", concat(filename, " ===\n"))
+    val length_info := concat("Original length: ", concat(toString(original_len), "\n"))
+    val cleaned_info := concat("Cleaned length: ", concat(toString(cleaned_len), "\n"))
+    
+    val bolt_info := if (has_bolt) {
+        concat("Contains 'Bolt': Yes (position ", concat(toString(bolt_pos), ")\n"))
+    } else {
+        "Contains 'Bolt': No\n"
+    }
+    
+    val doc_info := if (has_doc) {
+        "Contains 'document': Yes\n"
+    } else {
+        "Contains 'document': No\n"
+    }
+    
+    val separator := "\n"
+    
+    // Build the complete report
+    val report := concat(header, concat(length_info, concat(cleaned_info, concat(bolt_info, concat(doc_info, separator)))))
+    return report
+}
+
+fun createSummaryReport(): Integer {
+    print("Creating summary report...")
+    
+    val summary_header := "=== SUMMARY REPORT ===\n"
+    val summary_content := "Text processing completed successfully.\nAll files have been analyzed and cleaned.\nSee individual file reports above.\n\n"
+    
+    val summary := concat(summary_header, summary_content)
+    appendFile("analysis_report.txt", summary)
+    
+    // Display the final report
+    print("Final Analysis Report:")
+    print("---------------------")
+    val final_report := readFile("analysis_report.txt")
+    print(final_report)
+    
+    return 0
+}
+
+fun cleanup(): Integer {
+    print("Cleaning up files...")
+    
+    deleteFile("document1.txt")
+    deleteFile("document2.txt")
+    deleteFile("cleaned_document1.txt")
+    deleteFile("cleaned_document2.txt")
+    deleteFile("analysis_report.txt")
+    
+    print("Cleanup complete.")
+    return 0
+}

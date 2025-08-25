@@ -1,13 +1,9 @@
 // Bolt Standard Library - String Module
 
-export fun length(s: String): Integer {
-    // For now, this would need to be implemented in the runtime
-    // In a real implementation, we'd call a C function
-    return 0
-}
-
-export fun concat(a: String, b: String): String {
-    // For now, this would need to be implemented in the runtime
-    // In a real implementation, we'd call strcat or similar
-    return a
+native "C" {
+    export fun length(s: String): Integer
+    export fun concat(a: String, b: String): String
+    export fun indexOf(s: String, substr: String): Integer
+    export fun contains(s: String, substr: String): Bool
+    export fun trim(s: String): String
 }

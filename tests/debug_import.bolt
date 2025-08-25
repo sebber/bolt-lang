@@ -1,0 +1,6 @@
+import { print } from "bolt:stdio"
+
+fun main(): Integer {
+    print("Hello World")
+    return 0
+}

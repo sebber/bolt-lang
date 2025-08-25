@@ -1,0 +1,37 @@
+// Simple example showing clean module imports and usage
+import { print } from "bolt:stdio"
+import { readFile, writeFile } from "bolt:io"
+import { length, concat, contains } from "bolt:string"
+
+fun main(): Integer {
+    print("=== Bolt Module System Showcase ===")
+    
+    // String operations
+    val greeting := "Hello"
+    val target := ", Bolt!"
+    val message := concat(greeting, target)
+    val msg_length := length(message)
+    
+    print("String operations:")
+    print(concat("Message: ", message))
+    print(concat("Length: ", toString(msg_length)))
+    val has_bolt := contains(message, "Bolt")
+    if (has_bolt) {
+        print("Contains 'Bolt': Yes")
+    } else {
+        print("Contains 'Bolt': No")
+    }
+    print("")
+    
+    // File operations  
+    print("File operations:")
+    writeFile("demo.txt", message)
+    print("File created with message")
+    
+    val file_content := readFile("demo.txt")
+    print(concat("File contains: ", file_content))
+    
+    print("")
+    print("Module system working perfectly!")
+    return 0
+}

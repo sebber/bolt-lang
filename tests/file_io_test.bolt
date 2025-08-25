@@ -1,0 +1,46 @@
+import { print } from "bolt:stdio"
+import { readFile, writeFile, appendFile, fileExists, deleteFile } from "bolt:io"
+
+fun main(): Integer {
+    // Test writing a file
+    val success := writeFile("test_output.txt", "Hello, File I/O!")
+    if (success) {
+        print("File write successful")
+    } else {
+        print("File write failed")
+    }
+    
+    // Test reading the file back
+    val content := readFile("test_output.txt")
+    print("File content:")
+    print(content)
+    
+    // Test file existence check
+    val exists := fileExists("test_output.txt")
+    if (exists) {
+        print("File exists")
+    } else {
+        print("File does not exist")
+    }
+    
+    // Test appending to file
+    val append_success := appendFile("test_output.txt", "Appended content!")
+    if (append_success) {
+        print("Append successful")
+    }
+    
+    // Read the file again to see appended content
+    val updated_content := readFile("test_output.txt")
+    print("Updated file content:")
+    print(updated_content)
+    
+    // Test deleting the file
+    val delete_success := deleteFile("test_output.txt")
+    if (delete_success) {
+        print("File deleted successfully")
+    } else {
+        print("File deletion failed")
+    }
+    
+    return 0
+}
