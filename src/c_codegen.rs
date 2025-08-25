@@ -1,4 +1,6 @@
-use crate::ast::{BinaryOperator, Expression, NativeFunction, Field, Program, Statement, Type, UnaryOperator};
+use crate::ast::{
+    BinaryOperator, Expression, Field, NativeFunction, Program, Statement, Type, UnaryOperator,
+};
 use crate::module::ModuleSystem;
 use crate::symbol_table::SymbolTable;
 use std::collections::{HashMap, HashSet};
@@ -506,7 +508,10 @@ impl CCodeGen {
                     // Skip import/export statements in code generation
                     // They're handled by the module system
                 }
-                Statement::NativeBlock { language, functions } => {
+                Statement::NativeBlock {
+                    language,
+                    functions,
+                } => {
                     // Handle native function implementations
                     if language == "C" {
                         self.compile_native_c_functions(&functions, &mut result);
@@ -580,7 +585,10 @@ impl CCodeGen {
                                 break;
                             }
                         }
-                        Statement::NativeBlock { language, functions } => {
+                        Statement::NativeBlock {
+                            language,
+                            functions,
+                        } => {
                             // Check if any of the native functions match the requested function
                             for native_func in functions {
                                 if native_func.name == function_name && language == "C" {
@@ -639,7 +647,11 @@ impl CCodeGen {
                             self.main_code
                                 .push_str(&format!("    char* {} = {};\n", name, call_str));
                             self.variables.insert(name, "string".to_string());
-                        } else if func_name == "writeFile" || func_name == "appendFile" || func_name == "fileExists" || func_name == "deleteFile" {
+                        } else if func_name == "writeFile"
+                            || func_name == "appendFile"
+                            || func_name == "fileExists"
+                            || func_name == "deleteFile"
+                        {
                             self.main_code
                                 .push_str(&format!("    int {} = {};\n", name, call_str));
                             self.variables.insert(name, "bool".to_string()); // These return boolean values
@@ -647,10 +659,20 @@ impl CCodeGen {
                             self.main_code
                                 .push_str(&format!("    char* {} = {};\n", name, call_str));
                             self.variables.insert(name, "string".to_string()); // These return strings
-                        } else if func_name == "length" || func_name == "indexOf" || func_name == "contains" {
+                        } else if func_name == "length"
+                            || func_name == "indexOf"
+                            || func_name == "contains"
+                        {
                             self.main_code
                                 .push_str(&format!("    int {} = {};\n", name, call_str));
-                            self.variables.insert(name, if func_name == "contains" { "bool".to_string() } else { "int".to_string() });
+                            self.variables.insert(
+                                name,
+                                if func_name == "contains" {
+                                    "bool".to_string()
+                                } else {
+                                    "int".to_string()
+                                },
+                            );
                         } else {
                             self.main_code
                                 .push_str(&format!("    int {} = {};\n", name, call_str));
@@ -834,7 +856,11 @@ impl CCodeGen {
                             self.main_code
                                 .push_str(&format!("    char* {} = {};\n", name, call_str));
                             self.variables.insert(name, "string".to_string());
-                        } else if func_name == "writeFile" || func_name == "appendFile" || func_name == "fileExists" || func_name == "deleteFile" {
+                        } else if func_name == "writeFile"
+                            || func_name == "appendFile"
+                            || func_name == "fileExists"
+                            || func_name == "deleteFile"
+                        {
                             self.main_code
                                 .push_str(&format!("    int {} = {};\n", name, call_str));
                             self.variables.insert(name, "bool".to_string()); // These return boolean values
@@ -842,10 +868,20 @@ impl CCodeGen {
                             self.main_code
                                 .push_str(&format!("    char* {} = {};\n", name, call_str));
                             self.variables.insert(name, "string".to_string()); // These return strings
-                        } else if func_name == "length" || func_name == "indexOf" || func_name == "contains" {
+                        } else if func_name == "length"
+                            || func_name == "indexOf"
+                            || func_name == "contains"
+                        {
                             self.main_code
                                 .push_str(&format!("    int {} = {};\n", name, call_str));
-                            self.variables.insert(name, if func_name == "contains" { "bool".to_string() } else { "int".to_string() });
+                            self.variables.insert(
+                                name,
+                                if func_name == "contains" {
+                                    "bool".to_string()
+                                } else {
+                                    "int".to_string()
+                                },
+                            );
                         } else {
                             self.main_code
                                 .push_str(&format!("    int {} = {};\n", name, call_str));
@@ -1942,7 +1978,7 @@ impl CCodeGen {
                     result.push_str("    fclose(file);\n");
                     result.push_str("    return content;\n");
                     result.push_str("}\n\n");
-                },
+                }
                 "writeFile" => {
                     result.push_str("int writeFile(const char* path, const char* content) {\n");
                     result.push_str("    FILE* file = fopen(path, \"w\");\n");
@@ -1951,7 +1987,7 @@ impl CCodeGen {
                     result.push_str("    fclose(file);\n");
                     result.push_str("    return 1;\n");
                     result.push_str("}\n\n");
-                },
+                }
                 "appendFile" => {
                     result.push_str("int appendFile(const char* path, const char* content) {\n");
                     result.push_str("    FILE* file = fopen(path, \"a\");\n");
@@ -1960,7 +1996,7 @@ impl CCodeGen {
                     result.push_str("    fclose(file);\n");
                     result.push_str("    return 1;\n");
                     result.push_str("}\n\n");
-                },
+                }
                 "fileExists" => {
                     result.push_str("int fileExists(const char* path) {\n");
                     result.push_str("    FILE* file = fopen(path, \"r\");\n");
@@ -1970,33 +2006,33 @@ impl CCodeGen {
                     result.push_str("    }\n");
                     result.push_str("    return 0;\n");
                     result.push_str("}\n\n");
-                },
+                }
                 "deleteFile" => {
                     result.push_str("int deleteFile(const char* path) {\n");
                     result.push_str("    return remove(path) == 0 ? 1 : 0;\n");
                     result.push_str("}\n\n");
-                },
+                }
                 "length" => {
                     result.push_str("int length(const char* str) {\n");
                     result.push_str("    return strlen(str);\n");
                     result.push_str("}\n\n");
-                },
+                }
                 "concat" => {
                     result.push_str("char* concat(const char* str1, const char* str2) {\n");
                     result.push_str("    return string_concat(str1, str2);\n");
                     result.push_str("}\n\n");
-                },
+                }
                 "indexOf" => {
                     result.push_str("int indexOf(const char* str, const char* substr) {\n");
                     result.push_str("    char* pos = strstr(str, substr);\n");
                     result.push_str("    return pos ? (int)(pos - str) : -1;\n");
                     result.push_str("}\n\n");
-                },
+                }
                 "contains" => {
                     result.push_str("int contains(const char* str, const char* substr) {\n");
                     result.push_str("    return strstr(str, substr) != NULL ? 1 : 0;\n");
                     result.push_str("}\n\n");
-                },
+                }
                 "trim" => {
                     result.push_str("char* trim(const char* str) {\n");
                     result.push_str("    const char* start = str;\n");
@@ -2009,7 +2045,7 @@ impl CCodeGen {
                     result.push_str("    result[len] = '\\0';\n");
                     result.push_str("    return result;\n");
                     result.push_str("}\n\n");
-                },
+                }
                 _ => {
                     // For unknown functions, generate a stub that returns appropriate default
                     if let Some(return_type) = &function.return_type {
@@ -2017,41 +2053,49 @@ impl CCodeGen {
                             Type::Integer => {
                                 result.push_str(&format!("int {}(", function.name));
                                 for (i, param) in function.params.iter().enumerate() {
-                                    if i > 0 { result.push_str(", "); }
+                                    if i > 0 {
+                                        result.push_str(", ");
+                                    }
                                     result.push_str(&self.param_to_c_type(&param.param_type));
                                     result.push_str(&format!(" {}", param.name));
                                 }
                                 result.push_str(") {\n");
                                 result.push_str("    return 0; // Stub implementation\n");
                                 result.push_str("}\n\n");
-                            },
+                            }
                             Type::String => {
                                 result.push_str(&format!("char* {}(", function.name));
                                 for (i, param) in function.params.iter().enumerate() {
-                                    if i > 0 { result.push_str(", "); }
+                                    if i > 0 {
+                                        result.push_str(", ");
+                                    }
                                     result.push_str(&self.param_to_c_type(&param.param_type));
                                     result.push_str(&format!(" {}", param.name));
                                 }
                                 result.push_str(") {\n");
                                 result.push_str("    return \"\"; // Stub implementation\n");
                                 result.push_str("}\n\n");
-                            },
+                            }
                             Type::Bool => {
                                 result.push_str(&format!("int {}(", function.name));
                                 for (i, param) in function.params.iter().enumerate() {
-                                    if i > 0 { result.push_str(", "); }
+                                    if i > 0 {
+                                        result.push_str(", ");
+                                    }
                                     result.push_str(&self.param_to_c_type(&param.param_type));
                                     result.push_str(&format!(" {}", param.name));
                                 }
                                 result.push_str(") {\n");
                                 result.push_str("    return 0; // Stub implementation\n");
                                 result.push_str("}\n\n");
-                            },
+                            }
                             _ => {
                                 // Default void function
                                 result.push_str(&format!("void {}(", function.name));
                                 for (i, param) in function.params.iter().enumerate() {
-                                    if i > 0 { result.push_str(", "); }
+                                    if i > 0 {
+                                        result.push_str(", ");
+                                    }
                                     result.push_str(&self.param_to_c_type(&param.param_type));
                                     result.push_str(&format!(" {}", param.name));
                                 }
@@ -2064,7 +2108,9 @@ impl CCodeGen {
                         // Void function
                         result.push_str(&format!("void {}(", function.name));
                         for (i, param) in function.params.iter().enumerate() {
-                            if i > 0 { result.push_str(", "); }
+                            if i > 0 {
+                                result.push_str(", ");
+                            }
                             result.push_str(&self.param_to_c_type(&param.param_type));
                             result.push_str(&format!(" {}", param.name));
                         }
@@ -2093,7 +2139,7 @@ impl CCodeGen {
                 result.push_str("    fclose(file);\n");
                 result.push_str("    return content;\n");
                 result.push_str("}\n\n");
-            },
+            }
             "writeFile" => {
                 result.push_str("int writeFile(const char* path, const char* content) {\n");
                 result.push_str("    FILE* file = fopen(path, \"w\");\n");
@@ -2102,7 +2148,7 @@ impl CCodeGen {
                 result.push_str("    fclose(file);\n");
                 result.push_str("    return 1;\n");
                 result.push_str("}\n\n");
-            },
+            }
             "appendFile" => {
                 result.push_str("int appendFile(const char* path, const char* content) {\n");
                 result.push_str("    FILE* file = fopen(path, \"a\");\n");
@@ -2111,7 +2157,7 @@ impl CCodeGen {
                 result.push_str("    fclose(file);\n");
                 result.push_str("    return 1;\n");
                 result.push_str("}\n\n");
-            },
+            }
             "fileExists" => {
                 result.push_str("int fileExists(const char* path) {\n");
                 result.push_str("    FILE* file = fopen(path, \"r\");\n");
@@ -2121,33 +2167,33 @@ impl CCodeGen {
                 result.push_str("    }\n");
                 result.push_str("    return 0;\n");
                 result.push_str("}\n\n");
-            },
+            }
             "deleteFile" => {
                 result.push_str("int deleteFile(const char* path) {\n");
                 result.push_str("    return remove(path) == 0 ? 1 : 0;\n");
                 result.push_str("}\n\n");
-            },
+            }
             "length" => {
                 result.push_str("int length(const char* str) {\n");
                 result.push_str("    return strlen(str);\n");
                 result.push_str("}\n\n");
-            },
+            }
             "concat" => {
                 result.push_str("char* concat(const char* str1, const char* str2) {\n");
                 result.push_str("    return string_concat(str1, str2);\n");
                 result.push_str("}\n\n");
-            },
+            }
             "indexOf" => {
                 result.push_str("int indexOf(const char* str, const char* substr) {\n");
                 result.push_str("    char* pos = strstr(str, substr);\n");
                 result.push_str("    return pos ? (int)(pos - str) : -1;\n");
                 result.push_str("}\n\n");
-            },
+            }
             "contains" => {
                 result.push_str("int contains(const char* str, const char* substr) {\n");
                 result.push_str("    return strstr(str, substr) != NULL ? 1 : 0;\n");
                 result.push_str("}\n\n");
-            },
+            }
             "trim" => {
                 result.push_str("char* trim(const char* str) {\n");
                 result.push_str("    const char* start = str;\n");
@@ -2160,7 +2206,7 @@ impl CCodeGen {
                 result.push_str("    result[len] = '\\0';\n");
                 result.push_str("    return result;\n");
                 result.push_str("}\n\n");
-            },
+            }
             _ => {
                 // For unknown functions, generate a stub that returns appropriate default
                 if let Some(return_type) = &function.return_type {
@@ -2168,41 +2214,49 @@ impl CCodeGen {
                         Type::Integer => {
                             result.push_str(&format!("int {}(", function.name));
                             for (i, param) in function.params.iter().enumerate() {
-                                if i > 0 { result.push_str(", "); }
+                                if i > 0 {
+                                    result.push_str(", ");
+                                }
                                 result.push_str(&self.param_to_c_type(&param.param_type));
                                 result.push_str(&format!(" {}", param.name));
                             }
                             result.push_str(") {\n");
                             result.push_str("    return 0; // Stub implementation\n");
                             result.push_str("}\n\n");
-                        },
+                        }
                         Type::String => {
                             result.push_str(&format!("char* {}(", function.name));
                             for (i, param) in function.params.iter().enumerate() {
-                                if i > 0 { result.push_str(", "); }
+                                if i > 0 {
+                                    result.push_str(", ");
+                                }
                                 result.push_str(&self.param_to_c_type(&param.param_type));
                                 result.push_str(&format!(" {}", param.name));
                             }
                             result.push_str(") {\n");
                             result.push_str("    return \"\"; // Stub implementation\n");
                             result.push_str("}\n\n");
-                        },
+                        }
                         Type::Bool => {
                             result.push_str(&format!("int {}(", function.name));
                             for (i, param) in function.params.iter().enumerate() {
-                                if i > 0 { result.push_str(", "); }
+                                if i > 0 {
+                                    result.push_str(", ");
+                                }
                                 result.push_str(&self.param_to_c_type(&param.param_type));
                                 result.push_str(&format!(" {}", param.name));
                             }
                             result.push_str(") {\n");
                             result.push_str("    return 0; // Stub implementation\n");
                             result.push_str("}\n\n");
-                        },
+                        }
                         _ => {
                             // Default void function
                             result.push_str(&format!("void {}(", function.name));
                             for (i, param) in function.params.iter().enumerate() {
-                                if i > 0 { result.push_str(", "); }
+                                if i > 0 {
+                                    result.push_str(", ");
+                                }
                                 result.push_str(&self.param_to_c_type(&param.param_type));
                                 result.push_str(&format!(" {}", param.name));
                             }
@@ -2215,7 +2269,9 @@ impl CCodeGen {
                     // Void function
                     result.push_str(&format!("void {}(", function.name));
                     for (i, param) in function.params.iter().enumerate() {
-                        if i > 0 { result.push_str(", "); }
+                        if i > 0 {
+                            result.push_str(", ");
+                        }
                         result.push_str(&self.param_to_c_type(&param.param_type));
                         result.push_str(&format!(" {}", param.name));
                     }
@@ -2453,12 +2509,12 @@ mod tests {
     #[test]
     fn test_readfile_function_call() {
         let mut codegen = setup_codegen();
-        
+
         let expr = Expression::FunctionCall {
             name: "readFile".to_string(),
             args: vec![Expression::StringLiteral("test.txt".to_string())],
         };
-        
+
         let result = codegen.compile_expression_to_string(expr);
         assert_eq!(result, "readFile(\"test.txt\")");
     }
@@ -2466,7 +2522,7 @@ mod tests {
     #[test]
     fn test_writefile_function_call() {
         let mut codegen = setup_codegen();
-        
+
         let expr = Expression::FunctionCall {
             name: "writeFile".to_string(),
             args: vec![
@@ -2474,7 +2530,7 @@ mod tests {
                 Expression::StringLiteral("Hello, World!".to_string()),
             ],
         };
-        
+
         let result = codegen.compile_expression_to_string(expr);
         assert_eq!(result, "writeFile(\"output.txt\", \"Hello, World!\")");
     }
@@ -2482,7 +2538,7 @@ mod tests {
     #[test]
     fn test_file_io_variable_assignments() {
         let mut codegen = setup_codegen();
-        
+
         // Test readFile assignment
         let read_decl = Statement::ValDecl {
             name: "content".to_string(),
@@ -2492,13 +2548,18 @@ mod tests {
                 args: vec![Expression::StringLiteral("input.txt".to_string())],
             },
         };
-        
+
         codegen.compile_main_statement(read_decl);
-        
+
         // Check that readFile result is tracked as string type
-        assert_eq!(codegen.variables.get("content"), Some(&"string".to_string()));
-        assert!(codegen.main_code.contains("char* content = readFile(\"input.txt\");"));
-        
+        assert_eq!(
+            codegen.variables.get("content"),
+            Some(&"string".to_string())
+        );
+        assert!(codegen
+            .main_code
+            .contains("char* content = readFile(\"input.txt\");"));
+
         // Test writeFile assignment
         let write_decl = Statement::ValDecl {
             name: "success".to_string(),
@@ -2511,33 +2572,35 @@ mod tests {
                 ],
             },
         };
-        
+
         codegen.compile_main_statement(write_decl);
-        
+
         // Check that writeFile result is tracked as bool type
         assert_eq!(codegen.variables.get("success"), Some(&"bool".to_string()));
-        assert!(codegen.main_code.contains("int success = writeFile(\"output.txt\", \"test content\");"));
+        assert!(codegen
+            .main_code
+            .contains("int success = writeFile(\"output.txt\", \"test content\");"));
     }
 
     #[test]
     fn test_file_exists_and_delete_functions() {
         let mut codegen = setup_codegen();
-        
+
         // Test fileExists
         let exists_expr = Expression::FunctionCall {
             name: "fileExists".to_string(),
             args: vec![Expression::StringLiteral("test.txt".to_string())],
         };
-        
+
         let result = codegen.compile_expression_to_string(exists_expr);
         assert_eq!(result, "fileExists(\"test.txt\")");
-        
+
         // Test deleteFile
         let delete_expr = Expression::FunctionCall {
             name: "deleteFile".to_string(),
             args: vec![Expression::StringLiteral("temp.txt".to_string())],
         };
-        
+
         let result = codegen.compile_expression_to_string(delete_expr);
         assert_eq!(result, "deleteFile(\"temp.txt\")");
     }
@@ -2545,14 +2608,17 @@ mod tests {
     #[test]
     fn test_string_utility_functions() {
         let mut codegen = setup_codegen();
-        
+
         // Test length function
         let length_expr = Expression::FunctionCall {
             name: "length".to_string(),
             args: vec![Expression::StringLiteral("hello".to_string())],
         };
-        assert_eq!(codegen.compile_expression_to_string(length_expr), "length(\"hello\")");
-        
+        assert_eq!(
+            codegen.compile_expression_to_string(length_expr),
+            "length(\"hello\")"
+        );
+
         // Test concat function
         let concat_expr = Expression::FunctionCall {
             name: "concat".to_string(),
@@ -2561,8 +2627,11 @@ mod tests {
                 Expression::StringLiteral(" world".to_string()),
             ],
         };
-        assert_eq!(codegen.compile_expression_to_string(concat_expr), "concat(\"hello\", \" world\")");
-        
+        assert_eq!(
+            codegen.compile_expression_to_string(concat_expr),
+            "concat(\"hello\", \" world\")"
+        );
+
         // Test indexOf function
         let indexof_expr = Expression::FunctionCall {
             name: "indexOf".to_string(),
@@ -2571,8 +2640,11 @@ mod tests {
                 Expression::StringLiteral("world".to_string()),
             ],
         };
-        assert_eq!(codegen.compile_expression_to_string(indexof_expr), "indexOf(\"hello world\", \"world\")");
-        
+        assert_eq!(
+            codegen.compile_expression_to_string(indexof_expr),
+            "indexOf(\"hello world\", \"world\")"
+        );
+
         // Test contains function
         let contains_expr = Expression::FunctionCall {
             name: "contains".to_string(),
@@ -2581,20 +2653,26 @@ mod tests {
                 Expression::StringLiteral("world".to_string()),
             ],
         };
-        assert_eq!(codegen.compile_expression_to_string(contains_expr), "contains(\"hello world\", \"world\")");
-        
+        assert_eq!(
+            codegen.compile_expression_to_string(contains_expr),
+            "contains(\"hello world\", \"world\")"
+        );
+
         // Test trim function
         let trim_expr = Expression::FunctionCall {
             name: "trim".to_string(),
             args: vec![Expression::StringLiteral("  hello world  ".to_string())],
         };
-        assert_eq!(codegen.compile_expression_to_string(trim_expr), "trim(\"  hello world  \")");
+        assert_eq!(
+            codegen.compile_expression_to_string(trim_expr),
+            "trim(\"  hello world  \")"
+        );
     }
 
     #[test]
     fn test_string_utility_variable_assignments() {
         let mut codegen = setup_codegen();
-        
+
         // Test concat assignment
         let concat_decl = Statement::ValDecl {
             name: "result".to_string(),
@@ -2607,13 +2685,15 @@ mod tests {
                 ],
             },
         };
-        
+
         codegen.compile_main_statement(concat_decl);
-        
+
         // Check that concat result is tracked as string type
         assert_eq!(codegen.variables.get("result"), Some(&"string".to_string()));
-        assert!(codegen.main_code.contains("char* result = concat(\"Hello, \", \"World!\");"));
-        
+        assert!(codegen
+            .main_code
+            .contains("char* result = concat(\"Hello, \", \"World!\");"));
+
         // Test length assignment
         let length_decl = Statement::ValDecl {
             name: "len".to_string(),
@@ -2623,13 +2703,13 @@ mod tests {
                 args: vec![Expression::StringLiteral("test".to_string())],
             },
         };
-        
+
         codegen.compile_main_statement(length_decl);
-        
+
         // Check that length result is tracked as int type
         assert_eq!(codegen.variables.get("len"), Some(&"int".to_string()));
         assert!(codegen.main_code.contains("int len = length(\"test\");"));
-        
+
         // Test contains assignment
         let contains_decl = Statement::ValDecl {
             name: "found".to_string(),
@@ -2642,11 +2722,13 @@ mod tests {
                 ],
             },
         };
-        
+
         codegen.compile_main_statement(contains_decl);
-        
+
         // Check that contains result is tracked as bool type
         assert_eq!(codegen.variables.get("found"), Some(&"bool".to_string()));
-        assert!(codegen.main_code.contains("int found = contains(\"hello world\", \"world\");"));
+        assert!(codegen
+            .main_code
+            .contains("int found = contains(\"hello world\", \"world\");"));
     }
 }

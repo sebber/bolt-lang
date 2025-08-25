@@ -1,4 +1,4 @@
-use crate::ast::{Program, Statement, NativeFunction};
+use crate::ast::{NativeFunction, Program, Statement};
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use std::collections::HashMap;

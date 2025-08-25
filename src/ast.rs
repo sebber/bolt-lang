@@ -107,7 +107,7 @@ pub enum Statement {
         value: Expression,
     },
     NativeBlock {
-        language: String,       // e.g., "C"
+        language: String, // e.g., "C"
         functions: Vec<NativeFunction>,
     },
 }
