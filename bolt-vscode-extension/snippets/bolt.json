@@ -74,5 +74,89 @@
       "print(${1:\"message\"})"
     ],
     "description": "Print statement"
+  },
+  "Native C Block": {
+    "prefix": "native",
+    "body": [
+      "native \"C\" {",
+      "    export fun ${1:functionName}(${2:param}: ${3:Type}): ${4:ReturnType}",
+      "}"
+    ],
+    "description": "Native C function block"
+  },
+  "Import File I/O": {
+    "prefix": "importio",
+    "body": [
+      "import { ${1|readFile,writeFile,appendFile,deleteFile,fileExists|} } from \"bolt:io\""
+    ],
+    "description": "Import file I/O functions"
+  },
+  "Import String Utils": {
+    "prefix": "importstring",
+    "body": [
+      "import { ${1|length,concat,indexOf,contains,trim|} } from \"bolt:string\""
+    ],
+    "description": "Import string utility functions"
+  },
+  "Import Multiple I/O": {
+    "prefix": "importioall",
+    "body": [
+      "import { readFile, writeFile, appendFile, deleteFile, fileExists } from \"bolt:io\""
+    ],
+    "description": "Import all file I/O functions"
+  },
+  "Import Multiple String": {
+    "prefix": "importstringall",
+    "body": [
+      "import { length, concat, indexOf, contains, trim } from \"bolt:string\""
+    ],
+    "description": "Import all string utility functions"
+  },
+  "File Read Example": {
+    "prefix": "fileread",
+    "body": [
+      "import { readFile } from \"bolt:io\"",
+      "",
+      "val content := readFile(\"${1:filename.txt}\")",
+      "print(content)"
+    ],
+    "description": "File reading example"
+  },
+  "File Write Example": {
+    "prefix": "filewrite", 
+    "body": [
+      "import { writeFile } from \"bolt:io\"",
+      "",
+      "val success := writeFile(\"${1:output.txt}\", \"${2:Hello, World!}\")",
+      "if (success) {",
+      "    print(\"File written successfully\")",
+      "}"
+    ],
+    "description": "File writing example"
+  },
+  "String Concat Example": {
+    "prefix": "stringconcat",
+    "body": [
+      "import { concat } from \"bolt:string\"",
+      "",
+      "val result := concat(\"${1:Hello, }\", \"${2:World!}\")",
+      "print(result)"
+    ],
+    "description": "String concatenation example"
+  },
+  "String Search Example": {
+    "prefix": "stringsearch",
+    "body": [
+      "import { contains, indexOf } from \"bolt:string\"",
+      "",
+      "val text := \"${1:Hello, World!}\"",
+      "val hasWorld := contains(text, \"${2:World}\")",
+      "if (hasWorld) {",
+      "    val index := indexOf(text, \"${2:World}\")",
+      "    print(\"Found at position: \")",
+      "    print(toString(index))",
+      "}"
+    ],
+    "description": "String search example"
   }
 }

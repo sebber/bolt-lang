@@ -25,6 +25,9 @@
     },
     {
       "include": "#imports"
+    },
+    {
+      "include": "#native-blocks"
     }
   ],
   "repository": {
@@ -36,7 +39,7 @@
         },
         {
           "name": "keyword.declaration.bolt", 
-          "match": "\\b(val|var|fun|type|export|import|from)\\b"
+          "match": "\\b(val|var|fun|type|export|import|from|native)\\b"
         },
         {
           "name": "constant.language.bolt",
@@ -139,6 +142,34 @@
               "name": "string.quoted.double.module.bolt"
             }
           }
+        }
+      ]
+    },
+    "native-blocks": {
+      "name": "meta.native-block.bolt",
+      "begin": "\\b(native)\\s+(\"[A-Z]+\")\\s*\\{",
+      "end": "\\}",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.declaration.bolt"
+        },
+        "2": {
+          "name": "string.quoted.double.bolt"
+        }
+      },
+      "patterns": [
+        {
+          "name": "keyword.declaration.bolt",
+          "match": "\\b(export|fun)\\b"
+        },
+        {
+          "include": "#functions"
+        },
+        {
+          "include": "#types"
+        },
+        {
+          "include": "#comments"
         }
       ]
     }
