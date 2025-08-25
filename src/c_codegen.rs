@@ -39,6 +39,8 @@ pub struct CCodeGen {
     generic_types: HashMap<String, (Vec<String>, Vec<Field>)>, // base_name -> (type_params, fields)
     required_monomorphs: HashSet<MonomorphicType>, // Track which concrete types are needed
     generated_monomorphs: HashMap<MonomorphicType, String>, // Cache generated C code
+    // Library linking
+    pub required_libraries: HashSet<String>, // Track libraries needed for linking
 }
 
 impl CCodeGen {
@@ -53,6 +55,7 @@ impl CCodeGen {
             generic_types: HashMap::new(),
             required_monomorphs: HashSet::new(),
             generated_monomorphs: HashMap::new(),
+            required_libraries: HashSet::new(),
         }
     }
 
@@ -68,6 +71,7 @@ impl CCodeGen {
             generic_types: HashMap::new(),
             required_monomorphs: HashSet::new(),
             generated_monomorphs: HashMap::new(),
+            required_libraries: HashSet::new(),
         }
     }
 
@@ -517,6 +521,15 @@ impl CCodeGen {
                         self.compile_native_c_functions(&functions, &mut result);
                     }
                 }
+                Statement::ExternBlock {
+                    language,
+                    functions,
+                } => {
+                    // Handle extern function declarations
+                    if language == "C" {
+                        self.compile_extern_c_functions(&functions, &mut result);
+                    }
+                }
                 _ => {
                     remaining_statements.push(statement);
                 }
@@ -655,13 +668,14 @@ impl CCodeGen {
                             self.main_code
                                 .push_str(&format!("    int {} = {};\n", name, call_str));
                             self.variables.insert(name, "bool".to_string()); // These return boolean values
-                        } else if func_name == "concat" || func_name == "trim" {
+                        } else if func_name == "concat" || func_name == "trim" || func_name == "getenv" {
                             self.main_code
                                 .push_str(&format!("    char* {} = {};\n", name, call_str));
                             self.variables.insert(name, "string".to_string()); // These return strings
                         } else if func_name == "length"
                             || func_name == "indexOf"
                             || func_name == "contains"
+                            || func_name == "system"
                         {
                             self.main_code
                                 .push_str(&format!("    int {} = {};\n", name, call_str));
@@ -864,13 +878,14 @@ impl CCodeGen {
                             self.main_code
                                 .push_str(&format!("    int {} = {};\n", name, call_str));
                             self.variables.insert(name, "bool".to_string()); // These return boolean values
-                        } else if func_name == "concat" || func_name == "trim" {
+                        } else if func_name == "concat" || func_name == "trim" || func_name == "getenv" {
                             self.main_code
                                 .push_str(&format!("    char* {} = {};\n", name, call_str));
                             self.variables.insert(name, "string".to_string()); // These return strings
                         } else if func_name == "length"
                             || func_name == "indexOf"
                             || func_name == "contains"
+                            || func_name == "system"
                         {
                             self.main_code
                                 .push_str(&format!("    int {} = {};\n", name, call_str));
@@ -2285,11 +2300,42 @@ impl CCodeGen {
 
     fn param_to_c_type(&self, bolt_type: &Type) -> &str {
         match bolt_type {
-            Type::String => "const char*",
+            Type::String => "const char*", // Use const char* for function parameters to match system headers
             Type::Integer => "int",
             Type::Bool => "int",
             _ => "void*", // fallback
         }
+    }
+
+    fn compile_extern_c_functions(&mut self, functions: &[crate::ast::ExternFunction], result: &mut String) {
+        // Generate C function declarations for extern functions
+        for function in functions {
+            // Collect library requirements
+            if let Some(library) = &function.library {
+                self.required_libraries.insert(library.clone());
+            }
+            
+            // Generate function signature
+            let return_type = match &function.return_type {
+                Some(Type::String) => "char*", // Return types use char* not const char*
+                Some(t) => self.param_to_c_type(t),
+                None => "void",
+            };
+            result.push_str(&format!("extern {} {}(", return_type, function.name));
+            
+            // Generate parameters
+            for (i, param) in function.params.iter().enumerate() {
+                if i > 0 {
+                    result.push_str(", ");
+                }
+                let param_type = self.param_to_c_type(&param.param_type);
+                result.push_str(&format!("{} {}", param_type, param.name));
+            }
+            
+            result.push_str(");\n");
+        }
+        
+        result.push_str("\n");
     }
 }
 

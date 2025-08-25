@@ -46,6 +46,15 @@ pub struct NativeFunction {
 }
 
 #[derive(Debug, Clone)]
+pub struct ExternFunction {
+    pub name: String,
+    pub params: Vec<Parameter>,
+    pub return_type: Option<Type>,
+    pub exported: bool,
+    pub library: Option<String>, // e.g., "math" for -lmath
+}
+
+#[derive(Debug, Clone)]
 pub enum Statement {
     VarDecl {
         name: String,
@@ -109,6 +118,10 @@ pub enum Statement {
     NativeBlock {
         language: String, // e.g., "C"
         functions: Vec<NativeFunction>,
+    },
+    ExternBlock {
+        language: String, // e.g., "C"
+        functions: Vec<ExternFunction>,
     },
 }
 

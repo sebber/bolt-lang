@@ -59,6 +59,7 @@ impl Parser {
             TokenType::Import => self.parse_import(),
             TokenType::Export => self.parse_export(),
             TokenType::Native => self.parse_native_block(),
+            TokenType::Extern => self.parse_extern_block(),
             _ => {
                 // Could be assignment or expression
                 // Look ahead to see if it's an assignment
@@ -1300,6 +1301,146 @@ impl Parser {
         }
 
         Statement::NativeBlock {
+            language,
+            functions,
+        }
+    }
+
+    fn parse_extern_block(&mut self) -> Statement {
+        use crate::ast::ExternFunction;
+        
+        self.advance(); // consume 'extern'
+
+        // Expect a string literal for the language (e.g., "C")
+        let language = match &self.advance().token_type {
+            TokenType::String(lang) => lang.clone(),
+            _ => panic!("Expected string literal after 'extern' (e.g., 'extern \"C\"')"),
+        };
+
+        // Expect '{'
+        match &self.advance().token_type {
+            TokenType::LeftBrace => {}
+            _ => panic!("Expected '{{' after extern language"),
+        }
+
+        let mut functions = Vec::new();
+
+        // Parse function declarations until '}'
+        while !matches!(self.peek().token_type, TokenType::RightBrace) {
+            if self.is_at_end() {
+                panic!("Unclosed extern block");
+            }
+
+            // Skip newlines
+            if matches!(self.peek().token_type, TokenType::Newline) {
+                self.advance();
+                continue;
+            }
+
+            let exported = if matches!(self.peek().token_type, TokenType::Export) {
+                self.advance(); // consume 'export'
+                true
+            } else {
+                false
+            };
+
+            // Expect 'fun' (after optional export)
+            match &self.peek().token_type {
+                TokenType::Fun => {
+                    self.advance(); // consume 'fun'
+                }
+                _ => panic!(
+                    "Expected 'fun' in extern block, found {:?}",
+                    self.peek().token_type
+                ),
+            }
+
+            // Parse function signature (name, params, return type)
+            let name = match &self.advance().token_type {
+                TokenType::Identifier(n) => n.clone(),
+                _ => panic!("Expected function name"),
+            };
+
+            // Expect '('
+            match &self.advance().token_type {
+                TokenType::LeftParen => {}
+                _ => panic!("Expected '(' after function name"),
+            }
+
+            let mut params = Vec::new();
+
+            // Parse parameters
+            while !matches!(self.peek().token_type, TokenType::RightParen) {
+                if !params.is_empty() {
+                    match &self.advance().token_type {
+                        TokenType::Comma => {}
+                        _ => panic!("Expected ',' between parameters"),
+                    }
+                }
+
+                let param_name = match &self.advance().token_type {
+                    TokenType::Identifier(n) => n.clone(),
+                    _ => panic!("Expected parameter name"),
+                };
+
+                // Expect ':'
+                match &self.advance().token_type {
+                    TokenType::Colon => {}
+                    _ => panic!("Expected ':' after parameter name"),
+                }
+
+                let param_type = self.parse_type();
+                params.push(Parameter {
+                    name: param_name,
+                    param_type,
+                });
+            }
+
+            self.advance(); // consume ')'
+
+            // Parse optional return type
+            let return_type = if matches!(self.peek().token_type, TokenType::Colon) {
+                self.advance(); // consume ':'
+                Some(self.parse_type())
+            } else {
+                None
+            };
+
+            // Parse optional library specification (lib "math")
+            let library = if matches!(self.peek().token_type, TokenType::Identifier(_)) {
+                if let TokenType::Identifier(keyword) = &self.peek().token_type {
+                    if keyword == "lib" {
+                        self.advance(); // consume 'lib'
+                        match &self.advance().token_type {
+                            TokenType::String(lib_name) => Some(lib_name.clone()),
+                            _ => panic!("Expected library name string after 'lib'"),
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            functions.push(ExternFunction {
+                name,
+                params,
+                return_type,
+                exported,
+                library,
+            });
+        }
+
+        // Expect '}'
+        match &self.advance().token_type {
+            TokenType::RightBrace => {}
+            _ => panic!("Expected '}}' to close extern block"),
+        }
+
+        Statement::ExternBlock {
             language,
             functions,
         }

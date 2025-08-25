@@ -107,6 +107,11 @@ fn run() -> Result<(), CompileError> {
     let mut gcc_command = Command::new("gcc");
     gcc_command.arg(&c_file).arg("-o").arg(&full_output_path);
 
+    // Add library linking flags for extern functions
+    for library in &codegen.required_libraries {
+        gcc_command.arg(&format!("-l{}", library));
+    }
+
     if is_release {
         gcc_command.arg("-O2").arg("-DNDEBUG");
     } else {

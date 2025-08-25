@@ -1,0 +1,27 @@
+import { print } from "bolt:stdio"
+
+extern "C" {
+    export fun sin(x: Integer): Integer lib "m"
+    export fun cos(x: Integer): Integer lib "m"
+    export fun sqrt(x: Integer): Integer lib "m"
+}
+
+fun main(): Integer {
+    print("Testing extern math functions:")
+    
+    val x := 45
+    val sine := sin(x)
+    val cosine := cos(x)
+    val square_root := sqrt(x)
+    
+    print("sin(45):")
+    print(toString(sine))
+    
+    print("cos(45):")
+    print(toString(cosine))
+    
+    print("sqrt(45):")
+    print(toString(square_root))
+    
+    return 0
+}
