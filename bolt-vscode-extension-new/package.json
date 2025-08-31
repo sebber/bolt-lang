@@ -1,0 +1,145 @@
+{
+  "name": "bolt-language",
+  "displayName": "Bolt Language Support",
+  "description": "Complete IDE support for Bolt programming language with Language Server Protocol",
+  "version": "1.0.0",
+  "publisher": "bolt-lang",
+  "license": "MIT",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Linters"
+  ],
+  "keywords": [
+    "bolt",
+    "programming",
+    "language",
+    "lsp"
+  ],
+  "activationEvents": [
+    "onLanguage:bolt"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "bolt",
+        "aliases": ["Bolt", "bolt"],
+        "extensions": [".bolt"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "bolt",
+        "scopeName": "source.bolt",
+        "path": "./syntaxes/bolt.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Bolt",
+      "properties": {
+        "bolt.lspServerPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the Bolt LSP server executable. Leave empty to use bundled server."
+        },
+        "bolt.enableDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable diagnostics (error highlighting)"
+        },
+        "bolt.enableHover": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable hover information"
+        },
+        "bolt.enableCompletion": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable auto-completion"
+        },
+        "bolt.trace.server": {
+          "type": "string",
+          "enum": ["off", "messages", "verbose"],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "bolt.restartServer",
+        "title": "Restart Language Server",
+        "category": "Bolt"
+      },
+      {
+        "command": "bolt.showOutputChannel",
+        "title": "Show Language Server Output",
+        "category": "Bolt"
+      },
+      {
+        "command": "bolt.compile",
+        "title": "Compile Current File",
+        "category": "Bolt",
+        "icon": "$(play)"
+      },
+      {
+        "command": "bolt.run",
+        "title": "Compile and Run Current File",
+        "category": "Bolt",
+        "icon": "$(debug-start)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "bolt.compile",
+        "key": "f5",
+        "when": "resourceExtname == .bolt"
+      },
+      {
+        "command": "bolt.run",
+        "key": "ctrl+f5",
+        "when": "resourceExtname == .bolt"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "when": "resourceExtname == .bolt",
+          "command": "bolt.compile",
+          "group": "navigation"
+        },
+        {
+          "when": "resourceExtname == .bolt",
+          "command": "bolt.run",
+          "group": "navigation"
+        }
+      ]
+    },
+    "snippets": [
+      {
+        "language": "bolt",
+        "path": "./snippets/bolt.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "^18.x",
+    "typescript": "^5.0.0"
+  }
+}

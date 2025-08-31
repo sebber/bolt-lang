@@ -1,0 +1,181 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Bolt",
+    "patterns": [
+        {"include": "#comments"},
+        {"include": "#keywords"},
+        {"include": "#strings"},
+        {"include": "#numbers"},
+        {"include": "#constants"},
+        {"include": "#types"},
+        {"include": "#functions"},
+        {"include": "#variables"},
+        {"include": "#operators"},
+        {"include": "#punctuation"}
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.double-slash.bolt",
+                    "match": "//.*$"
+                }
+            ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.bolt",
+                    "match": "\\b(if|else|for|in|while|return|break|continue)\\b"
+                },
+                {
+                    "name": "keyword.other.bolt",
+                    "match": "\\b(import|from|export|as)\\b"
+                },
+                {
+                    "name": "storage.type.bolt",
+                    "match": "\\b(fun|var|val|def|type|native|extern)\\b"
+                }
+            ]
+        },
+        "strings": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.bolt",
+                    "begin": "\"",
+                    "end": "\"",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.bolt",
+                            "match": "\\\\(x[0-9A-Fa-f]{2}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.|$)"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.bolt",
+                    "begin": "'",
+                    "end": "'",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.bolt",
+                            "match": "\\\\(x[0-9A-Fa-f]{2}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.|$)"
+                        }
+                    ]
+                }
+            ]
+        },
+        "numbers": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.float.bolt",
+                    "match": "\\b[0-9]+\\.[0-9]+([eE][+-]?[0-9]+)?\\b"
+                },
+                {
+                    "name": "constant.numeric.hex.bolt",
+                    "match": "\\b0[xX][0-9a-fA-F]+\\b"
+                },
+                {
+                    "name": "constant.numeric.binary.bolt",
+                    "match": "\\b0[bB][01]+\\b"
+                },
+                {
+                    "name": "constant.numeric.octal.bolt",
+                    "match": "\\b0[oO][0-7]+\\b"
+                },
+                {
+                    "name": "constant.numeric.integer.bolt",
+                    "match": "\\b[0-9]+\\b"
+                }
+            ]
+        },
+        "constants": {
+            "patterns": [
+                {
+                    "name": "constant.language.bolt",
+                    "match": "\\b(true|false|null|nil)\\b"
+                }
+            ]
+        },
+        "types": {
+            "patterns": [
+                {
+                    "name": "support.type.primitive.bolt",
+                    "match": "\\b(Integer|String|Bool|Float|Void|Array|Map|Set|Option|Result)\\b"
+                },
+                {
+                    "name": "entity.name.type.bolt",
+                    "match": "\\b[A-Z][A-Za-z0-9_]*\\b"
+                }
+            ]
+        },
+        "functions": {
+            "patterns": [
+                {
+                    "name": "entity.name.function.bolt",
+                    "match": "\\b[a-z_][a-zA-Z0-9_]*(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.builtin.bolt",
+                    "match": "\\b(print|println|toString|length|push|pop|append|remove|contains)\\b"
+                }
+            ]
+        },
+        "variables": {
+            "patterns": [
+                {
+                    "name": "variable.other.bolt",
+                    "match": "\\b[a-z_][a-zA-Z0-9_]*\\b"
+                },
+                {
+                    "name": "variable.parameter.bolt",
+                    "match": "\\b[a-z_][a-zA-Z0-9_]*(?=\\s*:)"
+                }
+            ]
+        },
+        "operators": {
+            "patterns": [
+                {
+                    "name": "keyword.operator.arithmetic.bolt",
+                    "match": "(\\+|\\-|\\*|\\/|%)"
+                },
+                {
+                    "name": "keyword.operator.comparison.bolt",
+                    "match": "(==|!=|<=|>=|<|>)"
+                },
+                {
+                    "name": "keyword.operator.logical.bolt",
+                    "match": "(\\&\\&|\\|\\||!)"
+                },
+                {
+                    "name": "keyword.operator.assignment.bolt",
+                    "match": "(=|:=|\\+=|\\-=|\\*=|\\/=|%=)"
+                },
+                {
+                    "name": "keyword.operator.other.bolt",
+                    "match": "(\\&|\\^|\\.\\.|::)"
+                }
+            ]
+        },
+        "punctuation": {
+            "patterns": [
+                {
+                    "name": "punctuation.separator.bolt",
+                    "match": "[,;]"
+                },
+                {
+                    "name": "punctuation.accessor.bolt",
+                    "match": "\\."
+                },
+                {
+                    "name": "punctuation.definition.typeparameters.begin.bolt",
+                    "match": "<"
+                },
+                {
+                    "name": "punctuation.definition.typeparameters.end.bolt",
+                    "match": ">"
+                }
+            ]
+        }
+    },
+    "scopeName": "source.bolt"
+}
