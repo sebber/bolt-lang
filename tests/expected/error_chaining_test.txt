@@ -1,0 +1,6 @@
+=== Success Case ===
+Success: 42
+=== Failure Case ===
+Expected error: File not found: missing.txt
+=== Comparing Approaches ===
+Both approaches work: 42

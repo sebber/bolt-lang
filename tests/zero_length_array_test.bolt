@@ -1,6 +1,6 @@
 import { print } from "bolt:stdio"
 
-type Array[T] = {
+type Array<T> = {
     data: ^T,
     length: Integer,
     capacity: Integer
@@ -9,7 +9,7 @@ type Array[T] = {
 print("Testing zero-length arrays:")
 
 val dummy: Integer = 0
-val emptyIntArray: Array[Integer] = Array[Integer] {
+val emptyIntArray: Array<Integer> = Array<Integer> {
     data: &dummy,
     length: 0,
     capacity: 0

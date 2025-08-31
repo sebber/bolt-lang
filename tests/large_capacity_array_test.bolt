@@ -1,6 +1,6 @@
 import { print } from "bolt:stdio"
 
-type Array[T] = {
+type Array<T> = {
     data: ^T,
     length: Integer,
     capacity: Integer
@@ -9,7 +9,7 @@ type Array[T] = {
 print("Testing large capacity arrays:")
 
 val value: Integer = 999
-val largeArray: Array[Integer] = Array[Integer] {
+val largeArray: Array<Integer> = Array<Integer> {
     data: &value,
     length: 1,
     capacity: 1000

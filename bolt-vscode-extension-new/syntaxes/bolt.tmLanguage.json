@@ -26,7 +26,7 @@
             "patterns": [
                 {
                     "name": "keyword.control.bolt",
-                    "match": "\\b(if|else|for|in|while|return|break|continue)\\b"
+                    "match": "\\b(if|else|for|in|while|return|break|continue|match)\\b"
                 },
                 {
                     "name": "keyword.other.bolt",
@@ -93,6 +93,10 @@
                 {
                     "name": "constant.language.bolt",
                     "match": "\\b(true|false|null|nil)\\b"
+                },
+                {
+                    "name": "support.function.builtin.bolt",
+                    "match": "\\b(Success|Failure)\\b"
                 }
             ]
         },
@@ -152,7 +156,11 @@
                 },
                 {
                     "name": "keyword.operator.other.bolt",
-                    "match": "(\\&|\\^|\\.\\.|::)"
+                    "match": "(\\&|\\^|\\.\\.|::|\\?)"
+                },
+                {
+                    "name": "keyword.operator.pattern.bolt",
+                    "match": "(=>|\\|)"
                 }
             ]
         },

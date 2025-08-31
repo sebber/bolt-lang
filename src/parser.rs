@@ -1,6 +1,6 @@
 use crate::ast::{
-    BinaryOperator, Expression, Field, NativeFunction, Parameter, Program, Statement, StructField,
-    Type, UnaryOperator,
+    BinaryOperator, Expression, Field, MatchCase, NativeFunction, Parameter, Pattern, Program,
+    Statement, StructField, Type, UnaryOperator,
 };
 use crate::lexer::{Token, TokenType};
 use crate::symbol_table::{ScopeKind, SymbolTable};
@@ -60,6 +60,7 @@ impl Parser {
             TokenType::Export => self.parse_export(),
             TokenType::Native => self.parse_native_block(),
             TokenType::Extern => self.parse_extern_block(),
+            TokenType::Match => self.parse_match_statement(),
             _ => {
                 // Could be assignment or expression
                 // Look ahead to see if it's an assignment
@@ -200,12 +201,12 @@ impl Parser {
             _ => panic!("Expected identifier after 'type'"),
         };
 
-        // Parse generic type parameters: type Name[T, K] = { ... }
+        // Parse generic type parameters: type Name<T, K> = { ... }
         let mut type_params = Vec::new();
-        if self.peek().token_type == TokenType::LeftBracket {
-            self.advance(); // consume '['
+        if self.peek().token_type == TokenType::Less {
+            self.advance(); // consume '<'
 
-            while self.peek().token_type != TokenType::RightBracket && !self.is_at_end() {
+            while self.peek().token_type != TokenType::Greater && !self.is_at_end() {
                 match &self.advance().token_type {
                     TokenType::Identifier(param_name) => {
                         type_params.push(param_name.clone());
@@ -215,15 +216,15 @@ impl Parser {
 
                 if self.peek().token_type == TokenType::Comma {
                     self.advance(); // consume ','
-                } else if self.peek().token_type != TokenType::RightBracket {
-                    panic!("Expected ',' or ']' in type parameter list");
+                } else if self.peek().token_type != TokenType::Greater {
+                    panic!("Expected ',' or '>' in type parameter list");
                 }
             }
 
-            if self.peek().token_type != TokenType::RightBracket {
-                panic!("Expected ']' after type parameters");
+            if self.peek().token_type != TokenType::Greater {
+                panic!("Expected '>' after type parameters");
             }
-            self.advance(); // consume ']'
+            self.advance(); // consume '>'
         }
 
         if self.peek().token_type != TokenType::Equal {
@@ -280,10 +281,31 @@ impl Parser {
     }
 
     fn parse_type(&mut self) -> Type {
+        let mut base_type = self.parse_base_type();
+
+        // Check for union types (A | B | C)
+        while self.peek().token_type == TokenType::Pipe {
+            self.advance(); // consume '|'
+            let right_type = self.parse_base_type();
+
+            // If base_type is already a union, add to it
+            base_type = match base_type {
+                Type::Union(mut types) => {
+                    types.push(right_type);
+                    Type::Union(types)
+                }
+                _ => Type::Union(vec![base_type, right_type]),
+            };
+        }
+
+        base_type
+    }
+
+    fn parse_base_type(&mut self) -> Type {
         // Check for pointer type prefix (^)
         if self.peek().token_type == TokenType::Caret {
             self.advance(); // consume '^'
-            let pointee_type = self.parse_type();
+            let pointee_type = self.parse_base_type();
             return Type::Pointer(Box::new(pointee_type));
         }
 
@@ -294,29 +316,52 @@ impl Parser {
                     "String" => Type::String,
                     "Integer" => Type::Integer,
                     "Bool" => Type::Bool,
+                    "Result" => {
+                        // Handle Result<T, E> type
+                        if self.peek().token_type == TokenType::Less {
+                            self.advance(); // consume '<'
+
+                            let success_type = self.parse_type();
+
+                            if self.peek().token_type != TokenType::Comma {
+                                panic!("Expected ',' in Result type");
+                            }
+                            self.advance(); // consume ','
+
+                            let error_type = self.parse_type();
+
+                            if self.peek().token_type != TokenType::Greater {
+                                panic!("Expected '>' after Result type parameters");
+                            }
+                            self.advance(); // consume '>'
+
+                            Type::Result(Box::new(success_type), Box::new(error_type))
+                        } else {
+                            Type::Custom(name.clone())
+                        }
+                    }
                     _ => {
-                        // Check if this is a generic type like Array[T] or Map[K, V]
-                        if self.peek().token_type == TokenType::LeftBracket {
-                            self.advance(); // consume '['
+                        // Check if this is a generic type like Array<T> or Map<K, V>
+                        if self.peek().token_type == TokenType::Less {
+                            self.advance(); // consume '<'
 
                             let mut type_params = Vec::new();
-                            while self.peek().token_type != TokenType::RightBracket
-                                && !self.is_at_end()
+                            while self.peek().token_type != TokenType::Greater && !self.is_at_end()
                             {
                                 let param_type = self.parse_type();
                                 type_params.push(param_type);
 
                                 if self.peek().token_type == TokenType::Comma {
                                     self.advance(); // consume ','
-                                } else if self.peek().token_type != TokenType::RightBracket {
-                                    panic!("Expected ',' or ']' in generic type parameter list");
+                                } else if self.peek().token_type != TokenType::Greater {
+                                    panic!("Expected ',' or '>' in generic type parameter list");
                                 }
                             }
 
-                            if self.peek().token_type != TokenType::RightBracket {
-                                panic!("Expected ']' after generic type parameters");
+                            if self.peek().token_type != TokenType::Greater {
+                                panic!("Expected '>' after generic type parameters");
                             }
-                            self.advance(); // consume ']'
+                            self.advance(); // consume '>'
 
                             Type::Generic {
                                 name: name.clone(),
@@ -335,6 +380,19 @@ impl Parser {
 
     fn parse_expression(&mut self) -> Expression {
         self.parse_logical_or()
+    }
+
+    fn parse_match_expression(&mut self) -> Expression {
+        // Parse expressions but don't treat identifier + '{' as struct literal
+        // since '{' in match context means match body, not struct literal
+        match &self.peek().token_type {
+            TokenType::Identifier(name) => {
+                let name = name.clone();
+                self.advance(); // consume identifier
+                Expression::Identifier(name)
+            }
+            _ => self.parse_logical_or(),
+        }
     }
 
     fn parse_logical_or(&mut self) -> Expression {
@@ -448,7 +506,7 @@ impl Parser {
     fn parse_primary(&mut self) -> Expression {
         let mut expr = self.parse_primary_base();
 
-        // Handle postfix operations like field access and array indexing
+        // Handle postfix operations like field access, array indexing, and error propagation
         loop {
             match self.peek().token_type {
                 TokenType::Dot => {
@@ -477,6 +535,12 @@ impl Parser {
                 TokenType::Caret => {
                     self.advance(); // consume '^'
                     expr = Expression::Dereference {
+                        operand: Box::new(expr),
+                    };
+                }
+                TokenType::Question => {
+                    self.advance(); // consume '?'
+                    expr = Expression::TryOperator {
                         operand: Box::new(expr),
                     };
                 }
@@ -518,16 +582,36 @@ impl Parser {
                 let val = name.clone();
                 self.advance();
 
-                // Only parse as generic type constructor if followed by [Type] { ... }
-                // We need to look ahead to distinguish from array access like numbers[0]
-                if self.peek().token_type == TokenType::LeftBracket {
+                // Check for union constructors like Success(value) or Failure(error)
+                if (val == "Success" || val == "Failure")
+                    && self.peek().token_type == TokenType::LeftParen
+                {
+                    self.advance(); // consume '('
+
+                    let value = if self.peek().token_type == TokenType::RightParen {
+                        None // Unit constructor
+                    } else {
+                        Some(Box::new(self.parse_expression()))
+                    };
+
+                    if self.peek().token_type != TokenType::RightParen {
+                        panic!("Expected ')' after union constructor value");
+                    }
+                    self.advance(); // consume ')'
+
+                    Expression::UnionConstructor {
+                        variant: val,
+                        value,
+                        union_type: None, // Will be inferred by type checker
+                    }
+                } else if self.peek().token_type == TokenType::Less {
                     // Look ahead to see if this looks like a generic type
                     // Save current position in case we need to backtrack
                     let saved_pos = self.current;
-                    self.advance(); // consume '['
+                    self.advance(); // consume '<'
 
                     // Try to determine if this is a type or expression
-                    // If the first token after [ is a type keyword or uppercase identifier, it's likely a generic
+                    // If the first token after < is a type keyword or uppercase identifier, it's likely a generic
                     let is_generic = match &self.peek().token_type {
                         TokenType::Identifier(n) => {
                             n.chars().next().map_or(false, |c| c.is_uppercase())
@@ -539,22 +623,21 @@ impl Parser {
                         // Parse as generic type
                         let mut type_args = Vec::new();
 
-                        while self.peek().token_type != TokenType::RightBracket && !self.is_at_end()
-                        {
+                        while self.peek().token_type != TokenType::Greater && !self.is_at_end() {
                             type_args.push(self.parse_type());
                             if self.peek().token_type == TokenType::Comma {
                                 self.advance(); // consume ','
                             }
                         }
 
-                        if self.peek().token_type != TokenType::RightBracket {
-                            panic!("Expected ']' after generic type arguments");
+                        if self.peek().token_type != TokenType::Greater {
+                            panic!("Expected '>' after generic type arguments");
                         }
-                        self.advance(); // consume ']'
+                        self.advance(); // consume '>'
 
                         // Check if this is followed by a struct literal
                         if self.peek().token_type == TokenType::LeftBrace {
-                            // Parse generic struct literal like Array[Integer] { ... }
+                            // Parse generic struct literal like Array<Integer> { ... }
                             self.advance(); // consume '{'
                             let mut fields = Vec::new();
 
@@ -1442,6 +1525,116 @@ impl Parser {
         }
     }
 
+    fn parse_match_statement(&mut self) -> Statement {
+        self.advance(); // consume 'match'
+
+        let expr = self.parse_match_expression();
+
+        if self.peek().token_type != TokenType::LeftBrace {
+            panic!("Expected '{{' after match expression");
+        }
+        self.advance(); // consume '{'
+
+        let mut cases = Vec::new();
+
+        while self.peek().token_type != TokenType::RightBrace && !self.is_at_end() {
+            // Skip newlines
+            if self.peek().token_type == TokenType::Newline {
+                self.advance();
+                continue;
+            }
+
+            let pattern = self.parse_pattern();
+
+            if self.peek().token_type != TokenType::Arrow {
+                panic!("Expected '=>' after pattern");
+            }
+            self.advance(); // consume '=>'
+
+            // Parse the body - could be a single expression or block
+            let mut body = Vec::new();
+            if self.peek().token_type == TokenType::LeftBrace {
+                self.advance(); // consume '{'
+                while self.peek().token_type != TokenType::RightBrace && !self.is_at_end() {
+                    if self.peek().token_type == TokenType::Newline {
+                        self.advance();
+                        continue;
+                    }
+                    body.push(self.parse_statement());
+                }
+                if self.peek().token_type != TokenType::RightBrace {
+                    panic!("Expected '}}' after match case body");
+                }
+                self.advance(); // consume '}'
+            } else {
+                // Single statement (could be return, expression, etc.)
+                body.push(self.parse_statement());
+            }
+
+            cases.push(MatchCase { pattern, body });
+
+            // Optional comma between cases
+            if self.peek().token_type == TokenType::Comma {
+                self.advance();
+            }
+        }
+
+        if self.peek().token_type != TokenType::RightBrace {
+            panic!("Expected '}}' after match cases");
+        }
+        self.advance(); // consume '}'
+
+        Statement::Expression(Expression::Match {
+            expr: Box::new(expr),
+            cases,
+        })
+    }
+
+    fn parse_pattern(&mut self) -> Pattern {
+        match &self.peek().token_type {
+            TokenType::Underscore => {
+                self.advance(); // consume '_'
+                Pattern::Wildcard
+            }
+            TokenType::Identifier(name) => {
+                let name = name.clone();
+                self.advance();
+
+                // Check if this is a union variant pattern like Success(x) or Failure(msg)
+                if (name == "Success" || name == "Failure")
+                    && self.peek().token_type == TokenType::LeftParen
+                {
+                    self.advance(); // consume '('
+
+                    let inner = if self.peek().token_type == TokenType::RightParen {
+                        None // Unit variant
+                    } else {
+                        Some(Box::new(self.parse_pattern()))
+                    };
+
+                    if self.peek().token_type != TokenType::RightParen {
+                        panic!("Expected ')' after union variant pattern");
+                    }
+                    self.advance(); // consume ')'
+
+                    Pattern::UnionVariant {
+                        variant: name,
+                        inner,
+                    }
+                } else {
+                    // Variable pattern
+                    Pattern::Variable(name)
+                }
+            }
+            TokenType::String(_) | TokenType::Integer(_) | TokenType::True | TokenType::False => {
+                // Literal pattern
+                let expr = self.parse_primary_base();
+                Pattern::Literal(expr)
+            }
+            _ => panic!("Expected pattern, got {:?}", self.peek().token_type),
+        }
+    }
+
     fn peek(&self) -> &Token {
         &self.tokens[self.current]
     }
@@ -1494,8 +1687,8 @@ mod tests {
 
     #[test]
     fn test_generic_type_parsing() {
-        // Test Array[Integer]
-        match parse_type_from_string("Array[Integer]") {
+        // Test Array<Integer>
+        match parse_type_from_string("Array<Integer>") {
             Type::Generic { name, type_params } => {
                 assert_eq!(name, "Array");
                 assert_eq!(type_params.len(), 1);
@@ -1504,8 +1697,8 @@ mod tests {
             _ => panic!("Expected Generic type"),
         }
 
-        // Test Map[String, Integer]
-        match parse_type_from_string("Map[String, Integer]") {
+        // Test Map<String, Integer>
+        match parse_type_from_string("Map<String, Integer>") {
             Type::Generic { name, type_params } => {
                 assert_eq!(name, "Map");
                 assert_eq!(type_params.len(), 2);
@@ -1518,8 +1711,8 @@ mod tests {
 
     #[test]
     fn test_nested_generic_type_parsing() {
-        // Test Array[Array[Integer]]
-        match parse_type_from_string("Array[Array[Integer]]") {
+        // Test Array<Array<Integer>>
+        match parse_type_from_string("Array<Array<Integer>>") {
             Type::Generic { name, type_params } => {
                 assert_eq!(name, "Array");
                 assert_eq!(type_params.len(), 1);
@@ -1546,8 +1739,8 @@ mod tests {
             _ => panic!("Expected Pointer type"),
         }
 
-        // Test ^Array[String]
-        match parse_type_from_string("^Array[String]") {
+        // Test ^Array<String>
+        match parse_type_from_string("^Array<String>") {
             Type::Pointer(inner) => match inner.as_ref() {
                 Type::Generic { name, type_params } => {
                     assert_eq!(name, "Array");
@@ -1562,7 +1755,7 @@ mod tests {
 
     #[test]
     fn test_generic_type_definition_parsing() {
-        let input = "type Array[T] = { data: ^T, length: Integer }";
+        let input = "type Array<T> = { data: ^T, length: Integer }";
         match parse_statement_from_string(input) {
             Statement::TypeDef {
                 name,
@@ -1594,7 +1787,7 @@ mod tests {
 
     #[test]
     fn test_multi_param_generic_definition() {
-        let input = "type Map[K, V] = { keys: Array[K], values: Array[V] }";
+        let input = "type Map<K, V> = { keys: Array<K>, values: Array<V> }";
         match parse_statement_from_string(input) {
             Statement::TypeDef {
                 name,
