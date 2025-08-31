@@ -201,12 +201,12 @@ impl Parser {
             _ => panic!("Expected identifier after 'type'"),
         };
 
-        // Parse generic type parameters: type Name[T, K] = { ... }
+        // Parse generic type parameters: type Name<T, K> = { ... }
         let mut type_params = Vec::new();
-        if self.peek().token_type == TokenType::LeftBracket {
-            self.advance(); // consume '['
+        if self.peek().token_type == TokenType::Less {
+            self.advance(); // consume '<'
 
-            while self.peek().token_type != TokenType::RightBracket && !self.is_at_end() {
+            while self.peek().token_type != TokenType::Greater && !self.is_at_end() {
                 match &self.advance().token_type {
                     TokenType::Identifier(param_name) => {
                         type_params.push(param_name.clone());
@@ -216,15 +216,15 @@ impl Parser {
 
                 if self.peek().token_type == TokenType::Comma {
                     self.advance(); // consume ','
-                } else if self.peek().token_type != TokenType::RightBracket {
-                    panic!("Expected ',' or ']' in type parameter list");
+                } else if self.peek().token_type != TokenType::Greater {
+                    panic!("Expected ',' or '>' in type parameter list");
                 }
             }
 
-            if self.peek().token_type != TokenType::RightBracket {
-                panic!("Expected ']' after type parameters");
+            if self.peek().token_type != TokenType::Greater {
+                panic!("Expected '>' after type parameters");
             }
-            self.advance(); // consume ']'
+            self.advance(); // consume '>'
         }
 
         if self.peek().token_type != TokenType::Equal {
@@ -624,7 +624,7 @@ impl Parser {
 
                         // Check if this is followed by a struct literal
                         if self.peek().token_type == TokenType::LeftBrace {
-                            // Parse generic struct literal like Array[Integer] { ... }
+                            // Parse generic struct literal like Array<Integer> { ... }
                             self.advance(); // consume '{'
                             let mut fields = Vec::new();
 
@@ -1672,8 +1672,8 @@ mod tests {
 
     #[test]
     fn test_generic_type_parsing() {
-        // Test Array[Integer]
-        match parse_type_from_string("Array[Integer]") {
+        // Test Array<Integer>
+        match parse_type_from_string("Array<Integer>") {
             Type::Generic { name, type_params } => {
                 assert_eq!(name, "Array");
                 assert_eq!(type_params.len(), 1);
@@ -1682,8 +1682,8 @@ mod tests {
             _ => panic!("Expected Generic type"),
         }
 
-        // Test Map[String, Integer]
-        match parse_type_from_string("Map[String, Integer]") {
+        // Test Map<String, Integer>
+        match parse_type_from_string("Map<String, Integer>") {
             Type::Generic { name, type_params } => {
                 assert_eq!(name, "Map");
                 assert_eq!(type_params.len(), 2);
@@ -1696,8 +1696,8 @@ mod tests {
 
     #[test]
     fn test_nested_generic_type_parsing() {
-        // Test Array[Array[Integer]]
-        match parse_type_from_string("Array[Array[Integer]]") {
+        // Test Array<Array<Integer>>
+        match parse_type_from_string("Array<Array<Integer>>") {
             Type::Generic { name, type_params } => {
                 assert_eq!(name, "Array");
                 assert_eq!(type_params.len(), 1);
@@ -1724,8 +1724,8 @@ mod tests {
             _ => panic!("Expected Pointer type"),
         }
 
-        // Test ^Array[String]
-        match parse_type_from_string("^Array[String]") {
+        // Test ^Array<String>
+        match parse_type_from_string("^Array<String>") {
             Type::Pointer(inner) => match inner.as_ref() {
                 Type::Generic { name, type_params } => {
                     assert_eq!(name, "Array");
@@ -1740,7 +1740,7 @@ mod tests {
 
     #[test]
     fn test_generic_type_definition_parsing() {
-        let input = "type Array[T] = { data: ^T, length: Integer }";
+        let input = "type Array<T> = { data: ^T, length: Integer }";
         match parse_statement_from_string(input) {
             Statement::TypeDef {
                 name,
@@ -1772,7 +1772,7 @@ mod tests {
 
     #[test]
     fn test_multi_param_generic_definition() {
-        let input = "type Map[K, V] = { keys: Array[K], values: Array[V] }";
+        let input = "type Map<K, V> = { keys: Array<K>, values: Array<V> }";
         match parse_statement_from_string(input) {
             Statement::TypeDef {
                 name,
