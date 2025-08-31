@@ -1,5 +1,5 @@
 use crate::ast::{
-    BinaryOperator, Expression, Field, NativeFunction, Program, Statement, Type, UnaryOperator,
+    BinaryOperator, Expression, Field, NativeFunction, Pattern, Program, Statement, Type, UnaryOperator,
 };
 use crate::module::ModuleSystem;
 use crate::symbol_table::SymbolTable;
@@ -40,6 +40,8 @@ pub struct CCodeGen {
     generated_monomorphs: HashMap<MonomorphicType, String>, // Cache generated C code
     // Library linking
     pub required_libraries: HashSet<String>, // Track libraries needed for linking
+    // Union types
+    required_unions: HashSet<Type>, // Track which union/result types are needed
 }
 
 impl Default for CCodeGen {
@@ -60,6 +62,7 @@ impl CCodeGen {
             required_monomorphs: HashSet::new(),
             generated_monomorphs: HashMap::new(),
             required_libraries: HashSet::new(),
+            required_unions: HashSet::new(),
         }
     }
 
@@ -75,6 +78,7 @@ impl CCodeGen {
             required_monomorphs: HashSet::new(),
             generated_monomorphs: HashMap::new(),
             required_libraries: HashSet::new(),
+            required_unions: HashSet::new(),
         }
     }
 
@@ -189,6 +193,37 @@ impl CCodeGen {
     }
 
     // Convert Type to C type string
+    // Get a clean type name for use in identifiers (no C syntax like *)
+    fn type_to_clean_name(&self, t: &Type) -> String {
+        match t {
+            Type::Integer => "int".to_string(),
+            Type::String => "String".to_string(), // Use clean name
+            Type::Bool => "bool".to_string(),
+            Type::Pointer(inner) => format!("ptr_{}", self.type_to_clean_name(inner)),
+            Type::Custom(name) => name.clone(),
+            Type::Generic { name, type_params } => {
+                let type_arg_names: Vec<String> = type_params
+                    .iter()
+                    .map(|t| self.type_to_clean_name(t))
+                    .collect();
+                MonomorphicType::new(name.clone(), type_arg_names).mangled_name()
+            }
+            Type::Union(variants) => {
+                let variant_names: Vec<String> = variants
+                    .iter()
+                    .map(|t| self.type_to_clean_name(t))
+                    .collect();
+                format!("Union_{}", variant_names.join("_"))
+            }
+            Type::Result(ok_type, err_type) => {
+                let ok_name = self.type_to_clean_name(ok_type);
+                let err_name = self.type_to_clean_name(err_type);
+                format!("Result_{}_{}", ok_name, err_name)
+            }
+            _ => "unknown".to_string(),
+        }
+    }
+
     fn type_to_c_string(&self, t: &Type) -> String {
         match t {
             Type::Integer => "int".to_string(),
@@ -210,7 +245,92 @@ impl CCodeGen {
                     .collect();
                 MonomorphicType::new(name.clone(), type_arg_names).mangled_name()
             }
+            Type::Union(_) => {
+                self.type_to_clean_name(t)
+            }
+            Type::Result(_, _) => {
+                self.type_to_clean_name(t)
+            }
             _ => "void*".to_string(),
+        }
+    }
+
+    // Analyze type for union/result type usage
+    fn analyze_type_for_union_usage(&mut self, t: &Type) {
+        match t {
+            Type::Union(_) | Type::Result(_, _) => {
+                self.required_unions.insert(t.clone());
+            }
+            Type::Generic { type_params, .. } => {
+                for param_type in type_params {
+                    self.analyze_type_for_union_usage(param_type);
+                }
+            }
+            Type::Pointer(inner) => {
+                self.analyze_type_for_union_usage(inner);
+            }
+            _ => {}
+        }
+    }
+
+    // Analyze expression for union type usage
+    fn analyze_expression_for_union_usage(&mut self, expr: &Expression) {
+        match expr {
+            Expression::StructLiteral {
+                type_args,
+                fields,
+                ..
+            } => {
+                if let Some(type_params) = type_args {
+                    for t in type_params {
+                        self.analyze_type_for_union_usage(t);
+                    }
+                }
+                for field in fields {
+                    self.analyze_expression_for_union_usage(&field.value);
+                }
+            }
+            Expression::FunctionCall { args, .. } => {
+                for arg in args {
+                    self.analyze_expression_for_union_usage(arg);
+                }
+            }
+            Expression::NamespacedFunctionCall { args, .. } => {
+                for arg in args {
+                    self.analyze_expression_for_union_usage(arg);
+                }
+            }
+            Expression::BinaryOp { left, right, .. } => {
+                self.analyze_expression_for_union_usage(left);
+                self.analyze_expression_for_union_usage(right);
+            }
+            Expression::UnaryOp { operand, .. } => {
+                self.analyze_expression_for_union_usage(operand);
+            }
+            Expression::FieldAccess { object, .. } => {
+                self.analyze_expression_for_union_usage(object);
+            }
+            Expression::ArrayAccess { array, index } => {
+                self.analyze_expression_for_union_usage(array);
+                self.analyze_expression_for_union_usage(index);
+            }
+            Expression::AddressOf { operand } => {
+                self.analyze_expression_for_union_usage(operand);
+            }
+            Expression::Dereference { operand } => {
+                self.analyze_expression_for_union_usage(operand);
+            }
+            Expression::UnionConstructor { union_type, value, .. } => {
+                if let Some(union_t) = union_type {
+                    self.analyze_type_for_union_usage(union_t);
+                }
+                if let Some(val_expr) = value {
+                    self.analyze_expression_for_union_usage(val_expr);
+                }
+            }
+            _ => {
+                // Other expression types don't contain type information
+            }
         }
     }
 
@@ -228,10 +348,12 @@ impl CCodeGen {
                 ..
             } => {
                 self.analyze_type_for_generic_usage(t);
+                self.analyze_type_for_union_usage(t);
                 self.analyze_expression_for_generic_usage(value);
             }
             Statement::VarDecl { value, .. } | Statement::ValDecl { value, .. } => {
                 self.analyze_expression_for_generic_usage(value);
+                self.analyze_expression_for_union_usage(value);
             }
             Statement::Function {
                 params,
@@ -240,13 +362,16 @@ impl CCodeGen {
             } => {
                 for param in params {
                     self.analyze_type_for_generic_usage(&param.param_type);
+                    self.analyze_type_for_union_usage(&param.param_type);
                 }
                 if let Some(ret_type) = return_type {
                     self.analyze_type_for_generic_usage(ret_type);
+                    self.analyze_type_for_union_usage(ret_type);
                 }
             }
             Statement::Expression(expr) => {
                 self.analyze_expression_for_generic_usage(expr);
+                self.analyze_expression_for_union_usage(expr);
             }
             _ => {
                 // Other statement types don't contain type information
@@ -349,6 +474,86 @@ impl CCodeGen {
         }
     }
 
+    // Generate all required union types
+    fn generate_all_unions(&mut self) -> String {
+        let mut result = String::new();
+        let required_unions: Vec<Type> = self.required_unions.iter().cloned().collect();
+        
+        for union_type in required_unions {
+            let union_code = self.generate_union_type(&union_type);
+            result.push_str(&union_code);
+            result.push('\n');
+        }
+        
+        result
+    }
+    
+    // Generate a single union type as a tagged union
+    fn generate_union_type(&mut self, union_type: &Type) -> String {
+        match union_type {
+            Type::Union(variants) => {
+                let type_name = self.type_to_clean_name(union_type);
+                let mut result = format!("typedef struct {{\n");
+                result.push_str("    int tag; // 0, 1, 2... for each variant\n");
+                result.push_str("    union {\n");
+                
+                // Generate union fields for each variant
+                for (i, variant) in variants.iter().enumerate() {
+                    let field_type = self.type_to_c_string(variant);
+                    result.push_str(&format!("        {} variant{}; // variant {}\n", field_type, i, i));
+                }
+                
+                result.push_str("    } data;\n");
+                result.push_str(&format!("}} {};\n\n", type_name));
+                
+                // Generate constructor functions for each variant
+                for (i, variant) in variants.iter().enumerate() {
+                    let field_type = self.type_to_c_string(variant);
+                    result.push_str(&format!("{} {}__variant{}({} value) {{\n", type_name, type_name, i, field_type));
+                    result.push_str(&format!("    {} result;\n", type_name));
+                    result.push_str(&format!("    result.tag = {};\n", i));
+                    result.push_str(&format!("    result.data.variant{} = value;\n", i));
+                    result.push_str("    return result;\n");
+                    result.push_str("}\n\n");
+                }
+                
+                result
+            }
+            Type::Result(ok_type, err_type) => {
+                let type_name = self.type_to_clean_name(union_type);
+                let ok_type_str = self.type_to_c_string(ok_type);
+                let err_type_str = self.type_to_c_string(err_type);
+                
+                let mut result = format!("typedef struct {{\n");
+                result.push_str("    int is_success; // 1 = success, 0 = failure\n");
+                result.push_str("    union {\n");
+                result.push_str(&format!("        {} success;\n", ok_type_str));
+                result.push_str(&format!("        {} failure;\n", err_type_str));
+                result.push_str("    } data;\n");
+                result.push_str(&format!("}} {};\n\n", type_name));
+                
+                // Generate Success constructor
+                result.push_str(&format!("{} Success({} value) {{\n", type_name, ok_type_str));
+                result.push_str(&format!("    {} result;\n", type_name));
+                result.push_str("    result.is_success = 1;\n");
+                result.push_str("    result.data.success = value;\n");
+                result.push_str("    return result;\n");
+                result.push_str("}\n\n");
+                
+                // Generate Failure constructor
+                result.push_str(&format!("{} Failure({} error) {{\n", type_name, err_type_str));
+                result.push_str(&format!("    {} result;\n", type_name));
+                result.push_str("    result.is_success = 0;\n");
+                result.push_str("    result.data.failure = error;\n");
+                result.push_str("    return result;\n");
+                result.push_str("}\n\n");
+                
+                result
+            }
+            _ => String::new()
+        }
+    }
+
     // Generate all required monomorphic types
     fn generate_all_monomorphs(&mut self) -> String {
         let mut result = String::new();
@@ -421,6 +626,10 @@ impl CCodeGen {
         // Pass 3: Generate all required monomorphic types
         let monomorphic_code = self.generate_all_monomorphs();
         result.push_str(&monomorphic_code);
+        
+        // Pass 3.5: Generate all required union types
+        let union_code = self.generate_all_unions();
+        result.push_str(&union_code);
 
         // Pass 4: Generate functions and main code
         for statement in remaining_statements {
@@ -547,6 +756,10 @@ impl CCodeGen {
         // Pass 3: Generate all required monomorphic types
         let monomorphic_code = self.generate_all_monomorphs();
         result.push_str(&monomorphic_code);
+        
+        // Pass 3.5: Generate all required union types
+        let union_code = self.generate_all_unions();
+        result.push_str(&union_code);
 
         // Pass 4: Generate functions and main code
         for statement in remaining_statements {
@@ -623,7 +836,30 @@ impl CCodeGen {
 
     fn compile_main_statement(&mut self, statement: Statement) {
         match statement {
-            Statement::ValDecl { name, value, .. } => {
+            Statement::ValDecl { name, value, type_annotation, .. } => {
+                // First, check if we have an explicit type annotation
+                if let Some(explicit_type) = type_annotation {
+                    match explicit_type {
+                        Type::Result(_, _) | Type::Union(_) => {
+                            // Handle Result/Union types with explicit annotations
+                            let type_str = self.type_to_c_string(&explicit_type);
+                            let expr_str = self.compile_expression_to_string(value.clone());
+                            self.main_code.push_str(&format!("    {} {} = {};\n", type_str, name, expr_str));
+                            self.variables.insert(name, type_str);
+                            return; // Early return to skip the expression-based inference
+                        }
+                        _ => {
+                            // For other explicit types, generate accordingly
+                            let type_str = self.type_to_c_string(&explicit_type);
+                            let expr_str = self.compile_expression_to_string(value.clone());
+                            self.main_code.push_str(&format!("    {} {} = {};\n", type_str, name, expr_str));
+                            self.variables.insert(name, type_str);
+                            return;
+                        }
+                    }
+                }
+                
+                // Fallback to expression-based type inference
                 match &value {
                     Expression::StringLiteral(s) => {
                         self.main_code
@@ -833,10 +1069,39 @@ impl CCodeGen {
                             .push_str(&format!("    int {} = {};\n", name, expr_str));
                         self.variables.insert(name, "int".to_string()); // dereferenced value
                     }
-                    _ => {}
+                    _ => {
+                        // Fallback for other expression types (like unknown function calls)
+                        let expr_str = self.compile_expression_to_string(value.clone());
+                        // Use int as default type for now - this will at least compile
+                        self.main_code.push_str(&format!("    int {} = {};\n", name, expr_str));
+                        self.variables.insert(name, "int".to_string());
+                    }
                 }
             }
-            Statement::VarDecl { name, value, .. } => {
+            Statement::VarDecl { name, value, type_annotation, .. } => {
+                // First, check if we have an explicit type annotation
+                if let Some(explicit_type) = type_annotation {
+                    match explicit_type {
+                        Type::Result(_, _) | Type::Union(_) => {
+                            // Handle Result/Union types with explicit annotations
+                            let type_str = self.type_to_c_string(&explicit_type);
+                            let expr_str = self.compile_expression_to_string(value.clone());
+                            self.main_code.push_str(&format!("    {} {} = {};\n", type_str, name, expr_str));
+                            self.variables.insert(name, type_str);
+                            return; // Early return to skip the expression-based inference
+                        }
+                        _ => {
+                            // For other explicit types, generate accordingly
+                            let type_str = self.type_to_c_string(&explicit_type);
+                            let expr_str = self.compile_expression_to_string(value.clone());
+                            self.main_code.push_str(&format!("    {} {} = {};\n", type_str, name, expr_str));
+                            self.variables.insert(name, type_str);
+                            return;
+                        }
+                    }
+                }
+                
+                // Fallback to expression-based type inference
                 match &value {
                     Expression::StringLiteral(s) => {
                         self.main_code
@@ -1046,7 +1311,13 @@ impl CCodeGen {
                             .push_str(&format!("    int {} = {};\n", name, expr_str));
                         self.variables.insert(name, "int".to_string()); // dereferenced value
                     }
-                    _ => {}
+                    _ => {
+                        // Fallback for other expression types (like unknown function calls)
+                        let expr_str = self.compile_expression_to_string(value.clone());
+                        // Use int as default type for now - this will at least compile
+                        self.main_code.push_str(&format!("    int {} = {};\n", name, expr_str));
+                        self.variables.insert(name, "int".to_string());
+                    }
                 }
             }
             Statement::If {
@@ -1518,17 +1789,17 @@ impl CCodeGen {
 
             // Function signature
             let return_type_str = match return_type {
-                Some(Type::Integer) => "int",
-                Some(Type::String) => "char*",
-                Some(Type::Bool) => "int",
-                Some(Type::Array(_)) => "int*", // For now, assume int arrays
-                Some(Type::Pointer(_)) => "int*", // For now, assume int pointers
-                Some(Type::Custom(_)) => "void*",
-                Some(Type::Generic { .. }) => "void*", // TODO: Implement generic return types
-                Some(Type::TypeParameter(_)) => "void*", // TODO: Implement type parameter return types
-                Some(Type::Union(_)) => "void*", // TODO: Implement union types as tagged unions
-                Some(Type::Result(_, _)) => "void*", // TODO: Implement Result types
-                None => "void",
+                Some(Type::Integer) => "int".to_string(),
+                Some(Type::String) => "char*".to_string(),
+                Some(Type::Bool) => "int".to_string(),
+                Some(Type::Array(_)) => "int*".to_string(), // For now, assume int arrays
+                Some(Type::Pointer(_)) => "int*".to_string(), // For now, assume int pointers
+                Some(Type::Custom(_)) => "void*".to_string(),
+                Some(Type::Generic { .. }) => "void*".to_string(), // TODO: Implement generic return types
+                Some(Type::TypeParameter(_)) => "void*".to_string(), // TODO: Implement type parameter return types
+                Some(Type::Union(_)) => self.type_to_c_string(&return_type.as_ref().unwrap()),
+                Some(Type::Result(_, _)) => self.type_to_c_string(&return_type.as_ref().unwrap()),
+                None => "void".to_string(),
             };
 
             // Rename user's main function to avoid conflict with C main
@@ -1549,8 +1820,8 @@ impl CCodeGen {
                     Type::Custom(_) => "void*",
                     Type::Generic { .. } => "void*", // TODO: Implement generic type handling
                     Type::TypeParameter(_) => "void*", // TODO: Implement type parameter handling
-                    Type::Union(_) => "void*",       // TODO: Implement union types as tagged unions
-                    Type::Result(_, _) => "void*",   // TODO: Implement Result types
+                    Type::Union(_) => &self.type_to_c_string(&param.param_type),
+                    Type::Result(_, _) => &self.type_to_c_string(&param.param_type),
                 };
                 func_code.push_str(&format!("{} {}", param_type_str, param.name));
             }
@@ -1571,8 +1842,8 @@ impl CCodeGen {
                     Type::Custom(_) => "custom",
                     Type::Generic { .. } => "generic", // TODO: Implement generic type handling
                     Type::TypeParameter(_) => "typeparam", // TODO: Implement type parameter handling
-                    Type::Union(_) => "union", // TODO: Implement union types as tagged unions
-                    Type::Result(_, _) => "result", // TODO: Implement Result types
+                    Type::Union(_) => &self.type_to_c_string(&param.param_type),
+                    Type::Result(_, _) => &self.type_to_c_string(&param.param_type),
                 };
                 temp_codegen
                     .variables
@@ -1989,6 +2260,64 @@ impl CCodeGen {
             Expression::Dereference { operand } => {
                 let operand_str = self.compile_expression_to_string(*operand);
                 format!("(*{})", operand_str)
+            }
+            Expression::Match { expr, cases } => {
+                // Generate switch-like statement for tagged union matching
+                let expr_str = self.compile_expression_to_string(*expr);
+                let mut result = String::new();
+                
+                // For now, generate a simple conditional chain
+                // TODO: Optimize with proper switch statements
+                for (i, case) in cases.iter().enumerate() {
+                    if i > 0 {
+                        result.push_str(" : ");
+                    }
+                    
+                    // Generate condition based on pattern
+                    let condition = match &case.pattern {
+                        Pattern::UnionVariant { variant, .. } => {
+                            if variant == "Success" {
+                                format!("{}.is_success", expr_str)
+                            } else if variant == "Failure" {
+                                format!("!{}.is_success", expr_str)
+                            } else {
+                                format!("{}.tag == {}", expr_str, i) // Generic union case
+                            }
+                        }
+                        _ => "1".to_string(), // Fallback
+                    };
+                    
+                    // Generate the case body - for now, assume single expression
+                    let body_result = if let Some(stmt) = case.body.first() {
+                        match stmt {
+                            Statement::Expression(e) => self.compile_expression_to_string(e.clone()),
+                            Statement::Return(Some(e)) => {
+                                format!("return {}", self.compile_expression_to_string(e.clone()))
+                            }
+                            _ => "0".to_string(),
+                        }
+                    } else {
+                        "0".to_string()
+                    };
+                    
+                    if i == 0 {
+                        result.push_str(&format!("({} ? {} ", condition, body_result));
+                    } else {
+                        result.push_str(&body_result);
+                    }
+                }
+                result.push(')');
+                result
+            }
+            Expression::UnionConstructor { variant, value, union_type: _ } => {
+                // Generate constructor function call
+                if let Some(value_expr) = value {
+                    let value_str = self.compile_expression_to_string(*value_expr);
+                    format!("{}({})", variant, value_str)
+                } else {
+                    // Unit variant (no associated data)
+                    format!("{}()", variant)
+                }
             }
             _ => "0".to_string(), // fallback
         }
