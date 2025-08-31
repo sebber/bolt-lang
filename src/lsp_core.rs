@@ -419,6 +419,10 @@ impl LspCore {
             json!({"label": "return", "kind": 14, "detail": "Return statement", "insertText": "return "}),
             json!({"label": "import", "kind": 14, "detail": "Import statement", "insertText": "import "}),
             json!({"label": "export", "kind": 14, "detail": "Export declaration", "insertText": "export "}),
+            json!({"label": "match", "kind": 14, "detail": "Pattern matching", "insertText": "match "}),
+            json!({"label": "Success", "kind": 4, "detail": "Success constructor", "insertText": "Success("}),
+            json!({"label": "Failure", "kind": 4, "detail": "Failure constructor", "insertText": "Failure("}),
+            json!({"label": "Result", "kind": 7, "detail": "Result type", "insertText": "Result<"}),
             json!({"label": "true", "kind": 12, "detail": "Boolean literal", "insertText": "true"}),
             json!({"label": "false", "kind": 12, "detail": "Boolean literal", "insertText": "false"}),
         ]

@@ -551,6 +551,51 @@ impl TypeChecker {
                     }
                 }
             }
+            Expression::TryOperator { operand } => {
+                let operand_type = self.infer_expression_type(operand);
+                match operand_type {
+                    Type::Result(success_type, _error_type) => *success_type,
+                    _ => {
+                        self.add_error("Try operator (?) can only be used on Result types".to_string(), 0, 0);
+                        Type::String // Default type
+                    }
+                }
+            }
+            Expression::Match { expr, cases: _cases } => {
+                let _expr_type = self.infer_expression_type(expr);
+                // TODO: Implement proper match type inference
+                // For now, return a default type
+                Type::String
+            }
+            Expression::UnionConstructor { variant, value, union_type } => {
+                if let Some(union_type) = union_type {
+                    union_type.clone()
+                } else {
+                    // Infer union type based on variant
+                    match variant.as_str() {
+                        "Success" => {
+                            if let Some(value) = value {
+                                let value_type = self.infer_expression_type(value);
+                                Type::Result(Box::new(value_type), Box::new(Type::String))
+                            } else {
+                                Type::Result(Box::new(Type::String), Box::new(Type::String))
+                            }
+                        }
+                        "Failure" => {
+                            if let Some(value) = value {
+                                let error_type = self.infer_expression_type(value);
+                                Type::Result(Box::new(Type::String), Box::new(error_type))
+                            } else {
+                                Type::Result(Box::new(Type::String), Box::new(Type::String))
+                            }
+                        }
+                        _ => {
+                            self.add_error(format!("Unknown union constructor: {}", variant), 0, 0);
+                            Type::String
+                        }
+                    }
+                }
+            }
             _ => {
                 // Handle other expression types
                 Type::String // Default type for now
