@@ -1,12 +1,12 @@
 import { print } from "bolt:stdio"
 
-type Array[T] = {
+type Array<T> = {
     data: ^T,
     length: Integer,
     capacity: Integer
 }
 
-type Result[T] = {
+type Result<T> = {
     value: T,
     isError: Bool
 }
@@ -14,7 +14,7 @@ type Result[T] = {
 print("Testing generic error handling patterns:")
 
 val number: Integer = 100
-val result: Result[Integer] = Result[Integer] {
+val result: Result<Integer> = Result<Integer> {
     value: number,
     isError: false
 }
@@ -28,7 +28,7 @@ if (result.isError) {
     print("Success")
 }
 
-val errorResult: Result[Integer] = Result[Integer] {
+val errorResult: Result<Integer> = Result<Integer> {
     value: 0,
     isError: true
 }

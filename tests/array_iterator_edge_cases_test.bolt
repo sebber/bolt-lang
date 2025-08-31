@@ -1,6 +1,6 @@
 import { print } from "bolt:stdio"
 
-type Array[T] = {
+type Array<T> = {
     data: ^T,
     length: Integer,
     capacity: Integer
@@ -9,7 +9,7 @@ type Array[T] = {
 print("Testing edge cases:")
 
 val dummy: Integer = 0
-val emptyArray: Array[Integer] = Array[Integer] {
+val emptyArray: Array<Integer> = Array<Integer> {
     data: &dummy,
     length: 0,
     capacity: 5
@@ -22,7 +22,7 @@ for item in emptyArray {
 print("Empty array iteration complete")
 
 val singleValue: Integer = 42
-val singleArray: Array[Integer] = Array[Integer] {
+val singleArray: Array<Integer> = Array<Integer> {
     data: &singleValue,
     length: 1,
     capacity: 1
