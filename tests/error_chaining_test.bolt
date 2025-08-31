@@ -1,0 +1,88 @@
+import { print } from "bolt:stdio"
+
+// Simulated file operations that can fail
+fun readFile(path: String): Result<String, String> {
+    if (path == "missing.txt") {
+        return Failure("File not found: " + path)
+    }
+    return Success("raw content")
+}
+
+fun parseData(content: String): Result<Integer, String> {
+    if (content == "raw content") {
+        return Success(42)
+    }
+    return Failure("Parse error: invalid format")
+}
+
+fun validateData(value: Integer): Result<Integer, String> {
+    if (value < 0) {
+        return Failure("Validation error: negative value")
+    }
+    return Success(value)
+}
+
+// Example with early returns using ? operator
+fun processFile(path: String): Result<Integer, String> {
+    val content := readFile(path)?      // Early return if file read fails
+    val parsed := parseData(content)?   // Early return if parse fails  
+    val validated := validateData(parsed)?  // Early return if validation fails
+    return Success(validated)
+}
+
+// Alternative without ? operator (more verbose)
+fun processFileVerbose(path: String): Result<Integer, String> {
+    val fileResult := readFile(path)
+    match fileResult {
+        Success(content) => {
+            val parseResult := parseData(content)
+            match parseResult {
+                Success(parsed) => {
+                    val validResult := validateData(parsed)
+                    match validResult {
+                        Success(validated) => return Success(validated),
+                        Failure(error) => return Failure(error)
+                    }
+                },
+                Failure(error) => return Failure(error)
+            }
+        },
+        Failure(error) => return Failure(error)
+    }
+}
+
+fun main() {
+    // Test success case
+    print("=== Success Case ===")
+    val result1 := processFile("data.txt")
+    match result1 {
+        Success(value) => print("Success: " + toString(value)),
+        Failure(error) => print("Error: " + error)
+    }
+    
+    // Test failure case
+    print("=== Failure Case ===")
+    val result2 := processFile("missing.txt")
+    match result2 {
+        Success(value) => print("Unexpected success: " + toString(value)),
+        Failure(error) => print("Expected error: " + error)
+    }
+    
+    // Show both approaches give same result
+    print("=== Comparing Approaches ===")
+    val concise := processFile("data.txt")
+    val verbose := processFileVerbose("data.txt")
+    match concise {
+        Success(v1) => {
+            match verbose {
+                Success(v2) => {
+                    if (v1 == v2) {
+                        print("Both approaches work: " + toString(v1))
+                    }
+                },
+                Failure(_) => print("Verbose failed unexpectedly")
+            }
+        },
+        Failure(_) => print("Concise failed unexpectedly")
+    }
+}

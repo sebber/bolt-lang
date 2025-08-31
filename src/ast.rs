@@ -15,6 +15,10 @@ pub enum Type {
     },
     // Type parameters like T, K, V
     TypeParameter(String),
+    // Union types for error handling: Success<T> | Failure<E>
+    Union(Vec<Type>),
+    // Result type: Result<T, E> = Success<T> | Failure<E>
+    Result(Box<Type>, Box<Type>), // Result<T, E>
 }
 
 #[derive(Debug, Clone)]
@@ -150,6 +154,10 @@ pub enum Expression {
         operator: UnaryOperator,
         operand: Box<Expression>,
     },
+    // Error propagation operator: expr?
+    TryOperator {
+        operand: Box<Expression>,
+    },
     StructLiteral {
         type_name: String,
         type_args: Option<Vec<Type>>, // For generic constructors like Array[Integer]
@@ -169,6 +177,38 @@ pub enum Expression {
     Dereference {
         operand: Box<Expression>,
     },
+    // Pattern matching expression
+    Match {
+        expr: Box<Expression>,
+        cases: Vec<MatchCase>,
+    },
+    // Union type constructors (Success, Failure)
+    UnionConstructor {
+        variant: String,          // "Success", "Failure", etc.
+        value: Option<Box<Expression>>, // Some(expr) or None for unit variants
+        union_type: Option<Type>, // Type hint for inference
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct MatchCase {
+    pub pattern: Pattern,
+    pub body: Vec<Statement>,
+}
+
+#[derive(Debug, Clone)]
+pub enum Pattern {
+    // Literal patterns: 42, "hello", true
+    Literal(Expression),
+    // Variable binding: x (captures anything)
+    Variable(String),
+    // Union variant patterns: Success(x), Failure(msg)
+    UnionVariant {
+        variant: String,
+        inner: Option<Box<Pattern>>, // None for unit variants
+    },
+    // Wildcard pattern: _
+    Wildcard,
 }
 
 #[derive(Debug, Clone)]

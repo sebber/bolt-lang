@@ -1,6 +1,6 @@
 use crate::ast::{
-    BinaryOperator, Expression, Field, NativeFunction, Parameter, Program, Statement, StructField,
-    Type, UnaryOperator,
+    BinaryOperator, Expression, Field, MatchCase, NativeFunction, Parameter, Pattern, Program, 
+    Statement, StructField, Type, UnaryOperator,
 };
 use crate::lexer::{Token, TokenType};
 use crate::symbol_table::{ScopeKind, SymbolTable};
@@ -60,6 +60,7 @@ impl Parser {
             TokenType::Export => self.parse_export(),
             TokenType::Native => self.parse_native_block(),
             TokenType::Extern => self.parse_extern_block(),
+            TokenType::Match => self.parse_match_statement(),
             _ => {
                 // Could be assignment or expression
                 // Look ahead to see if it's an assignment
@@ -280,10 +281,31 @@ impl Parser {
     }
 
     fn parse_type(&mut self) -> Type {
+        let mut base_type = self.parse_base_type();
+        
+        // Check for union types (A | B | C)
+        while self.peek().token_type == TokenType::Pipe {
+            self.advance(); // consume '|'
+            let right_type = self.parse_base_type();
+            
+            // If base_type is already a union, add to it
+            base_type = match base_type {
+                Type::Union(mut types) => {
+                    types.push(right_type);
+                    Type::Union(types)
+                }
+                _ => Type::Union(vec![base_type, right_type])
+            };
+        }
+        
+        base_type
+    }
+
+    fn parse_base_type(&mut self) -> Type {
         // Check for pointer type prefix (^)
         if self.peek().token_type == TokenType::Caret {
             self.advance(); // consume '^'
-            let pointee_type = self.parse_type();
+            let pointee_type = self.parse_base_type();
             return Type::Pointer(Box::new(pointee_type));
         }
 
@@ -294,13 +316,37 @@ impl Parser {
                     "String" => Type::String,
                     "Integer" => Type::Integer,
                     "Bool" => Type::Bool,
+                    "Result" => {
+                        // Handle Result<T, E> type
+                        if self.peek().token_type == TokenType::Less {
+                            self.advance(); // consume '<'
+                            
+                            let success_type = self.parse_type();
+                            
+                            if self.peek().token_type != TokenType::Comma {
+                                panic!("Expected ',' in Result type");
+                            }
+                            self.advance(); // consume ','
+                            
+                            let error_type = self.parse_type();
+                            
+                            if self.peek().token_type != TokenType::Greater {
+                                panic!("Expected '>' after Result type parameters");
+                            }
+                            self.advance(); // consume '>'
+                            
+                            Type::Result(Box::new(success_type), Box::new(error_type))
+                        } else {
+                            Type::Custom(name.clone())
+                        }
+                    }
                     _ => {
-                        // Check if this is a generic type like Array[T] or Map[K, V]
-                        if self.peek().token_type == TokenType::LeftBracket {
-                            self.advance(); // consume '['
+                        // Check if this is a generic type like Array<T> or Map<K, V>
+                        if self.peek().token_type == TokenType::Less {
+                            self.advance(); // consume '<'
 
                             let mut type_params = Vec::new();
-                            while self.peek().token_type != TokenType::RightBracket
+                            while self.peek().token_type != TokenType::Greater
                                 && !self.is_at_end()
                             {
                                 let param_type = self.parse_type();
@@ -308,15 +354,15 @@ impl Parser {
 
                                 if self.peek().token_type == TokenType::Comma {
                                     self.advance(); // consume ','
-                                } else if self.peek().token_type != TokenType::RightBracket {
-                                    panic!("Expected ',' or ']' in generic type parameter list");
+                                } else if self.peek().token_type != TokenType::Greater {
+                                    panic!("Expected ',' or '>' in generic type parameter list");
                                 }
                             }
 
-                            if self.peek().token_type != TokenType::RightBracket {
-                                panic!("Expected ']' after generic type parameters");
+                            if self.peek().token_type != TokenType::Greater {
+                                panic!("Expected '>' after generic type parameters");
                             }
-                            self.advance(); // consume ']'
+                            self.advance(); // consume '>'
 
                             Type::Generic {
                                 name: name.clone(),
@@ -448,7 +494,7 @@ impl Parser {
     fn parse_primary(&mut self) -> Expression {
         let mut expr = self.parse_primary_base();
 
-        // Handle postfix operations like field access and array indexing
+        // Handle postfix operations like field access, array indexing, and error propagation
         loop {
             match self.peek().token_type {
                 TokenType::Dot => {
@@ -477,6 +523,12 @@ impl Parser {
                 TokenType::Caret => {
                     self.advance(); // consume '^'
                     expr = Expression::Dereference {
+                        operand: Box::new(expr),
+                    };
+                }
+                TokenType::Question => {
+                    self.advance(); // consume '?'
+                    expr = Expression::TryOperator {
                         operand: Box::new(expr),
                     };
                 }
@@ -518,9 +570,27 @@ impl Parser {
                 let val = name.clone();
                 self.advance();
 
-                // Only parse as generic type constructor if followed by [Type] { ... }
-                // We need to look ahead to distinguish from array access like numbers[0]
-                if self.peek().token_type == TokenType::LeftBracket {
+                // Check for union constructors like Success(value) or Failure(error)
+                if (val == "Success" || val == "Failure") && self.peek().token_type == TokenType::LeftParen {
+                    self.advance(); // consume '('
+                    
+                    let value = if self.peek().token_type == TokenType::RightParen {
+                        None // Unit constructor
+                    } else {
+                        Some(Box::new(self.parse_expression()))
+                    };
+                    
+                    if self.peek().token_type != TokenType::RightParen {
+                        panic!("Expected ')' after union constructor value");
+                    }
+                    self.advance(); // consume ')'
+                    
+                    Expression::UnionConstructor {
+                        variant: val,
+                        value,
+                        union_type: None, // Will be inferred by type checker
+                    }
+                } else if self.peek().token_type == TokenType::LeftBracket {
                     // Look ahead to see if this looks like a generic type
                     // Save current position in case we need to backtrack
                     let saved_pos = self.current;
@@ -1439,6 +1509,114 @@ impl Parser {
         Statement::ExternBlock {
             language,
             functions,
+        }
+    }
+
+    fn parse_match_statement(&mut self) -> Statement {
+        self.advance(); // consume 'match'
+        
+        let expr = self.parse_expression();
+        
+        if self.peek().token_type != TokenType::LeftBrace {
+            panic!("Expected '{{' after match expression");
+        }
+        self.advance(); // consume '{'
+        
+        let mut cases = Vec::new();
+        
+        while self.peek().token_type != TokenType::RightBrace && !self.is_at_end() {
+            // Skip newlines
+            if self.peek().token_type == TokenType::Newline {
+                self.advance();
+                continue;
+            }
+            
+            let pattern = self.parse_pattern();
+            
+            if self.peek().token_type != TokenType::Arrow {
+                panic!("Expected '=>' after pattern");
+            }
+            self.advance(); // consume '=>'
+            
+            // Parse the body - could be a single expression or block
+            let mut body = Vec::new();
+            if self.peek().token_type == TokenType::LeftBrace {
+                self.advance(); // consume '{'
+                while self.peek().token_type != TokenType::RightBrace && !self.is_at_end() {
+                    if self.peek().token_type == TokenType::Newline {
+                        self.advance();
+                        continue;
+                    }
+                    body.push(self.parse_statement());
+                }
+                if self.peek().token_type != TokenType::RightBrace {
+                    panic!("Expected '}}' after match case body");
+                }
+                self.advance(); // consume '}'
+            } else {
+                // Single expression as statement
+                body.push(Statement::Expression(self.parse_expression()));
+            }
+            
+            cases.push(MatchCase { pattern, body });
+            
+            // Optional comma between cases
+            if self.peek().token_type == TokenType::Comma {
+                self.advance();
+            }
+        }
+        
+        if self.peek().token_type != TokenType::RightBrace {
+            panic!("Expected '}}' after match cases");
+        }
+        self.advance(); // consume '}'
+        
+        Statement::Expression(Expression::Match {
+            expr: Box::new(expr),
+            cases,
+        })
+    }
+
+    fn parse_pattern(&mut self) -> Pattern {
+        match &self.peek().token_type {
+            TokenType::Underscore => {
+                self.advance(); // consume '_'
+                Pattern::Wildcard
+            }
+            TokenType::Identifier(name) => {
+                let name = name.clone();
+                self.advance();
+                
+                // Check if this is a union variant pattern like Success(x) or Failure(msg)
+                if (name == "Success" || name == "Failure") && self.peek().token_type == TokenType::LeftParen {
+                    self.advance(); // consume '('
+                    
+                    let inner = if self.peek().token_type == TokenType::RightParen {
+                        None // Unit variant
+                    } else {
+                        Some(Box::new(self.parse_pattern()))
+                    };
+                    
+                    if self.peek().token_type != TokenType::RightParen {
+                        panic!("Expected ')' after union variant pattern");
+                    }
+                    self.advance(); // consume ')'
+                    
+                    Pattern::UnionVariant {
+                        variant: name,
+                        inner,
+                    }
+                } else {
+                    // Variable pattern
+                    Pattern::Variable(name)
+                }
+            }
+            TokenType::String(_) | TokenType::Integer(_) | TokenType::True | TokenType::False => {
+                // Literal pattern
+                let expr = self.parse_primary_base();
+                Pattern::Literal(expr)
+            }
+            _ => panic!("Expected pattern, got {:?}", self.peek().token_type),
         }
     }
 

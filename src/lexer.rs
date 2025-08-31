@@ -47,6 +47,11 @@ pub enum TokenType {
     Dot,
     Caret,     // ^ for pointer types and dereference
     Ampersand, // & for address-of
+    Question,  // ? for error propagation operator
+    Pipe,      // | for union types
+    Match,     // match keyword
+    Arrow,     // => for match cases
+    Underscore, // _ wildcard pattern
     Newline,
     Eof,
 }
@@ -122,6 +127,9 @@ impl Lexer {
                 if self.current_char() == '=' {
                     self.advance();
                     TokenType::EqualEqual
+                } else if self.current_char() == '>' {
+                    self.advance();
+                    TokenType::Arrow
                 } else {
                     TokenType::Equal
                 }
@@ -234,7 +242,7 @@ impl Lexer {
                     self.advance();
                     TokenType::OrOr
                 } else {
-                    panic!("Unexpected character: '|'");
+                    TokenType::Pipe
                 }
             }
             '.' => {
@@ -244,6 +252,10 @@ impl Lexer {
             '^' => {
                 self.advance();
                 TokenType::Caret
+            }
+            '?' => {
+                self.advance();
+                TokenType::Question
             }
             '\n' => {
                 self.advance();
@@ -323,6 +335,8 @@ impl Lexer {
             "from" => TokenType::From,
             "native" => TokenType::Native,
             "extern" => TokenType::Extern,
+            "match" => TokenType::Match,
+            "_" => TokenType::Underscore,
             _ => TokenType::Identifier(value),
         }
     }
