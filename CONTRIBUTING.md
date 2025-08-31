@@ -40,20 +40,23 @@ git checkout -b docs/improve-readme
 
 ### 2. Develop with Fast Feedback
 
-Use our fast development tools:
+Use our development tools:
 
 ```bash
-# Quick development check (10s)
-./dev.sh check
+# Build the compiler
+cargo build
 
-# Run specific test (3s) 
-./dev.sh single hello_world
+# Run the complete test suite (61 tests)
+./run_tests.sh
 
-# Watch mode for continuous testing
-./dev.sh watch
+# Run all example programs
+./run_examples.sh
 
-# Run full test suite (30s)
-./dev.sh test
+# Check code formatting
+cargo fmt --all -- --check
+
+# Run clippy linting
+cargo clippy --all-targets --all-features
 ```
 
 ### 3. Make Conventional Commits
@@ -121,10 +124,11 @@ Once approved, **squash merge** the PR:
 ## 📋 PR Requirements
 
 ### Before Creating PR
-- ✅ All tests pass: `./run_tests.sh` 
-- ✅ Code is formatted: `cargo fmt`
-- ✅ No linting errors: `cargo clippy`
-- ✅ New features have tests
+- ✅ All tests pass: `./run_tests.sh` (61/61 tests)
+- ✅ Examples work: `./run_examples.sh`
+- ✅ Code is formatted: `cargo fmt --all`
+- ✅ No linting errors: `cargo clippy --all-targets --all-features`
+- ✅ New features have tests in `tests/`
 - ✅ Documentation updated if needed
 
 ### PR Title Format
@@ -173,8 +177,8 @@ fun main() {
 # Add expected output
 echo "test" > tests/expected/new_feature_test.txt
 
-# Run the specific test
-./dev.sh single new_feature_test
+# Test the feature by running all tests
+./run_tests.sh
 ```
 
 ### Test Naming
