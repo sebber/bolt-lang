@@ -158,5 +158,86 @@
       "}"
     ],
     "description": "String search example"
+  },
+  "Type-Safe Variable Declaration": {
+    "prefix": "valtype",
+    "body": [
+      "val ${1:name}: ${2:Type} := ${3:value}"
+    ],
+    "description": "Type-safe immutable variable declaration"
+  },
+  "Type-Safe Mutable Variable": {
+    "prefix": "vartype",
+    "body": [
+      "var ${1:name}: ${2:Type} := ${3:value}"
+    ],
+    "description": "Type-safe mutable variable declaration"
+  },
+  "Function with Type Annotation": {
+    "prefix": "funtyped",
+    "body": [
+      "fun ${1:functionName}(${2:param}: ${3:Type}): ${4:ReturnType} {",
+      "    ${5:// Function body}",
+      "    return ${6:result}",
+      "}"
+    ],
+    "description": "Function with full type annotations"
+  },
+  "Error Handling Pattern": {
+    "prefix": "errorhandle",
+    "body": [
+      "if (${1:result}) {",
+      "    print(\"Success\")",
+      "} else {",
+      "    print(\"Error occurred\")",
+      "}"
+    ],
+    "description": "Basic error handling pattern"
+  },
+  "Type Inference Variable": {
+    "prefix": "valinfer",
+    "body": [
+      "val ${1:name} := ${2:value} // Type inferred automatically"
+    ],
+    "description": "Variable with automatic type inference"
+  },
+  "Array with Type": {
+    "prefix": "arraytype",
+    "body": [
+      "val ${1:name}: Array[${2:Type}] := [${3:values}]"
+    ],
+    "description": "Typed array declaration"
+  },
+  "Comprehensive Import": {
+    "prefix": "importall",
+    "body": [
+      "import { print } from \"bolt:stdio\"",
+      "import { ${1|readFile,writeFile,appendFile,deleteFile,fileExists|} } from \"bolt:io\"",
+      "import { ${2|length,concat,indexOf,contains,trim|} } from \"bolt:string\""
+    ],
+    "description": "Import multiple modules"
+  },
+  "Complete File Processing": {
+    "prefix": "fileprocess",
+    "body": [
+      "import { print } from \"bolt:stdio\"",
+      "import { readFile, writeFile } from \"bolt:io\"",
+      "import { length, trim } from \"bolt:string\"",
+      "",
+      "// Read file content",
+      "val content := readFile(\"${1:input.txt}\")",
+      "val processed := trim(content)",
+      "val contentLength := length(processed)",
+      "",
+      "print(\"Processed content length: \")",
+      "print(toString(contentLength))",
+      "",
+      "// Write processed result", 
+      "val success := writeFile(\"${2:output.txt}\", processed)",
+      "if (success) {",
+      "    print(\"File processed successfully\")",
+      "}"
+    ],
+    "description": "Complete file processing example"
   }
 }

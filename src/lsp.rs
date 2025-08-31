@@ -41,7 +41,7 @@ impl LspServer {
     fn new() -> Self {
         let module_system = ModuleSystem::new();
         let type_checker = TypeChecker::new().with_module_system(module_system.clone());
-        
+
         Self {
             documents: HashMap::new(),
             type_checker,
@@ -1011,39 +1011,48 @@ impl LspServer {
         }
     }
 
-    fn get_type_info_for_word(&self, document: &str, word: &str, _line: usize) -> Result<String, String> {
+    fn get_type_info_for_word(
+        &self,
+        document: &str,
+        word: &str,
+        _line: usize,
+    ) -> Result<String, String> {
         eprintln!("LSP: Getting type info for word: '{}'", word);
-        
+
         // Try to parse the document to get type information
         let mut lexer = Lexer::new(document.to_string());
         if let Ok(tokens) = lexer.tokenize() {
             let mut parser = Parser::new(tokens);
             if let Ok(ast) = parser.parse() {
                 // Create a type checker for this document
-                let mut type_checker = TypeChecker::new().with_module_system(self.module_system.clone());
-                
+                let mut type_checker =
+                    TypeChecker::new().with_module_system(self.module_system.clone());
+
                 // Try to type check the program (ignore errors for now)
                 let _ = type_checker.check_program(&ast);
-                
+
                 // Check if it's a function
                 if let Some(func_sig) = type_checker.get_function_signature(word) {
-                    let params_str: Vec<String> = func_sig.params.iter()
+                    let params_str: Vec<String> = func_sig
+                        .params
+                        .iter()
                         .map(|(name, ty)| format!("{}: {:?}", name, ty))
                         .collect();
-                    
-                    let return_str = func_sig.return_type
+
+                    let return_str = func_sig
+                        .return_type
                         .as_ref()
                         .map(|t| format!("{:?}", t))
                         .unwrap_or_else(|| "void".to_string());
-                    
+
                     let func_type = if func_sig.is_native {
                         "Native Function"
                     } else if func_sig.is_extern {
-                        "Extern Function" 
+                        "Extern Function"
                     } else {
                         "Function"
                     };
-                    
+
                     return Ok(format!(
                         "**`{}({}): {}`**\n\n*{}*\n\n{}",
                         word,
@@ -1053,7 +1062,7 @@ impl LspServer {
                         self.get_function_docs(word)
                     ));
                 }
-                
+
                 // Check if it's a variable
                 if let Some(var_type) = type_checker.get_variable_type(word) {
                     return Ok(format!(
@@ -1063,13 +1072,13 @@ impl LspServer {
                 }
             }
         }
-        
+
         Err("No type information found".to_string())
     }
 
     fn get_completion_items(&self, params: Option<&serde_json::Value>) -> Vec<serde_json::Value> {
         let mut items = Vec::new();
-        
+
         // Add basic language keywords
         items.extend(vec![
             json!({"label": "val", "kind": 14, "detail": "Immutable variable", "insertText": "val "}),
@@ -1097,14 +1106,17 @@ impl LspServer {
 
         // Add functions from type checker if available
         for (func_name, signature) in self.type_checker.get_all_functions() {
-            let detail = format!("({}) -> {}", 
-                signature.params.iter()
+            let detail = format!(
+                "({}) -> {}",
+                signature
+                    .params
+                    .iter()
                     .map(|(name, param_type)| format!("{}: {:?}", name, param_type))
                     .collect::<Vec<_>>()
                     .join(", "),
                 format!("{:?}", signature.return_type)
             );
-            
+
             items.push(json!({
                 "label": func_name,
                 "kind": 3, // Function
