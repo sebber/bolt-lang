@@ -391,7 +391,7 @@ impl Parser {
                 self.advance(); // consume identifier
                 Expression::Identifier(name)
             }
-            _ => self.parse_logical_or()
+            _ => self.parse_logical_or(),
         }
     }
 
@@ -623,8 +623,7 @@ impl Parser {
                         // Parse as generic type
                         let mut type_args = Vec::new();
 
-                        while self.peek().token_type != TokenType::Greater && !self.is_at_end()
-                        {
+                        while self.peek().token_type != TokenType::Greater && !self.is_at_end() {
                             type_args.push(self.parse_type());
                             if self.peek().token_type == TokenType::Comma {
                                 self.advance(); // consume ','
