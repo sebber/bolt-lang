@@ -6,36 +6,36 @@ type Array<T> = {
     capacity: Integer
 }
 
-type Result<T> = {
+type Option<T> = {
     value: T,
-    isError: Bool
+    hasValue: Bool
 }
 
 print("Testing generic error handling patterns:")
 
 val number: Integer = 100
-val result: Result<Integer> = Result<Integer> {
+val result: Option<Integer> = Option<Integer> {
     value: number,
-    isError: false
+    hasValue: true
 }
 
 print("Result value:")
 print(result.value)
 
-if (result.isError) {
-    print("Error occurred")
+if (!result.hasValue) {
+    print("No value")
 } else {
-    print("Success")
+    print("Has value")
 }
 
-val errorResult: Result<Integer> = Result<Integer> {
+val emptyResult: Option<Integer> = Option<Integer> {
     value: 0,
-    isError: true
+    hasValue: false
 }
 
-print("Error result:")
-if (errorResult.isError) {
-    print("Error detected")
+print("Empty result:")
+if (!emptyResult.hasValue) {
+    print("Empty detected")
 } else {
-    print("No error")
+    print("Has value")
 }

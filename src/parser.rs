@@ -382,6 +382,19 @@ impl Parser {
         self.parse_logical_or()
     }
 
+    fn parse_match_expression(&mut self) -> Expression {
+        // Parse expressions but don't treat identifier + '{' as struct literal
+        // since '{' in match context means match body, not struct literal
+        match &self.peek().token_type {
+            TokenType::Identifier(name) => {
+                let name = name.clone();
+                self.advance(); // consume identifier
+                Expression::Identifier(name)
+            }
+            _ => self.parse_logical_or()
+        }
+    }
+
     fn parse_logical_or(&mut self) -> Expression {
         let mut expr = self.parse_logical_and();
 
@@ -591,14 +604,14 @@ impl Parser {
                         value,
                         union_type: None, // Will be inferred by type checker
                     }
-                } else if self.peek().token_type == TokenType::LeftBracket {
+                } else if self.peek().token_type == TokenType::Less {
                     // Look ahead to see if this looks like a generic type
                     // Save current position in case we need to backtrack
                     let saved_pos = self.current;
-                    self.advance(); // consume '['
+                    self.advance(); // consume '<'
 
                     // Try to determine if this is a type or expression
-                    // If the first token after [ is a type keyword or uppercase identifier, it's likely a generic
+                    // If the first token after < is a type keyword or uppercase identifier, it's likely a generic
                     let is_generic = match &self.peek().token_type {
                         TokenType::Identifier(n) => {
                             n.chars().next().map_or(false, |c| c.is_uppercase())
@@ -610,7 +623,7 @@ impl Parser {
                         // Parse as generic type
                         let mut type_args = Vec::new();
 
-                        while self.peek().token_type != TokenType::RightBracket && !self.is_at_end()
+                        while self.peek().token_type != TokenType::Greater && !self.is_at_end()
                         {
                             type_args.push(self.parse_type());
                             if self.peek().token_type == TokenType::Comma {
@@ -618,10 +631,10 @@ impl Parser {
                             }
                         }
 
-                        if self.peek().token_type != TokenType::RightBracket {
-                            panic!("Expected ']' after generic type arguments");
+                        if self.peek().token_type != TokenType::Greater {
+                            panic!("Expected '>' after generic type arguments");
                         }
-                        self.advance(); // consume ']'
+                        self.advance(); // consume '>'
 
                         // Check if this is followed by a struct literal
                         if self.peek().token_type == TokenType::LeftBrace {
@@ -1516,7 +1529,7 @@ impl Parser {
     fn parse_match_statement(&mut self) -> Statement {
         self.advance(); // consume 'match'
 
-        let expr = self.parse_expression();
+        let expr = self.parse_match_expression();
 
         if self.peek().token_type != TokenType::LeftBrace {
             panic!("Expected '{{' after match expression");
@@ -1555,8 +1568,8 @@ impl Parser {
                 }
                 self.advance(); // consume '}'
             } else {
-                // Single expression as statement
-                body.push(Statement::Expression(self.parse_expression()));
+                // Single statement (could be return, expression, etc.)
+                body.push(self.parse_statement());
             }
 
             cases.push(MatchCase { pattern, body });
