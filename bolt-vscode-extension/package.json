@@ -1,9 +1,10 @@
 {
   "name": "bolt-language",
   "displayName": "Bolt Language",
-  "description": "Syntax highlighting and IntelliSense for the Bolt programming language with native C modules, file I/O, and string utilities",
-  "version": "0.4.0",
+  "description": "Advanced IntelliSense with type-aware hover, completion, and error checking for the Bolt programming language with native C modules, file I/O, and string utilities",
+  "version": "0.6.0",
   "publisher": "bolt-lang",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.60.0"
   },
@@ -20,18 +21,32 @@
     "systems programming",
     "native modules",
     "file io",
-    "string utilities"
+    "string utilities",
+    "type checking",
+    "intellisense",
+    "language server",
+    "hover information",
+    "auto completion"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/boltlang.git"
+    "url": "https://github.com/sebber/bolt-lang.git"
   },
+  "bugs": {
+    "url": "https://github.com/sebber/bolt-lang/issues"
+  },
+  "homepage": "https://github.com/sebber/bolt-lang#readme",
   "main": "./src/extension.js",
   "activationEvents": [
     "onLanguage:bolt"
   ],
-  "devDependencies": {
+  "dependencies": {
     "vscode-languageclient": "^7.0.0"
+  },
+  "scripts": {
+    "test": "echo 'No tests yet'",
+    "package": "vsce package",
+    "publish": "vsce publish"
   },
   "contributes": {
     "languages": [
@@ -59,12 +74,44 @@
         "command": "bolt.showLSPOutput",
         "title": "Show Bolt LSP Output",
         "category": "Bolt"
+      },
+      {
+        "command": "bolt.compileFile",
+        "title": "Compile Current File",
+        "category": "Bolt"
+      },
+      {
+        "command": "bolt.runFile",
+        "title": "Compile and Run Current File",
+        "category": "Bolt"
+      },
+      {
+        "command": "bolt.showTypeInfo",
+        "title": "Show Type Information",
+        "category": "Bolt"
       }
     ],
     "snippets": [
       {
         "language": "bolt",
         "path": "./snippets/bolt.json"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "bolt.compileFile",
+        "key": "F5",
+        "when": "editorTextFocus && resourceExtname == .bolt"
+      },
+      {
+        "command": "bolt.runFile",
+        "key": "Ctrl+F5",
+        "when": "editorTextFocus && resourceExtname == .bolt"
+      },
+      {
+        "command": "bolt.showTypeInfo",
+        "key": "Ctrl+K Ctrl+I",
+        "when": "editorTextFocus && resourceExtname == .bolt"
       }
     ]
   }

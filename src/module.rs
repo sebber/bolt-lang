@@ -11,7 +11,7 @@ pub struct ModuleExports {
     pub variables: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ModuleSystem {
     modules: HashMap<String, Program>,
     exports: HashMap<String, ModuleExports>,

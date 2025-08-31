@@ -1,0 +1,45 @@
+# VS Code Extension Ignore File
+
+# Node modules
+node_modules/
+npm-debug.log*
+
+# Source control
+.git/
+.gitignore
+
+# Development files
+src/extension_refactored.js
+src/extension_backup.js
+*.log
+
+# Build artifacts
+out/
+dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Test files
+test/
+tests/
+**/*.test.js
+
+# Documentation (keep only essential)
+docs/
+*.md
+!README.md
+
+# Package manager files
+.npm
+.yarn-integrity
+yarn-error.log
+
+# Temporary files
+tmp/
+temp/
