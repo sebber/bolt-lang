@@ -556,18 +556,29 @@ impl TypeChecker {
                 match operand_type {
                     Type::Result(success_type, _error_type) => *success_type,
                     _ => {
-                        self.add_error("Try operator (?) can only be used on Result types".to_string(), 0, 0);
+                        self.add_error(
+                            "Try operator (?) can only be used on Result types".to_string(),
+                            0,
+                            0,
+                        );
                         Type::String // Default type
                     }
                 }
             }
-            Expression::Match { expr, cases: _cases } => {
+            Expression::Match {
+                expr,
+                cases: _cases,
+            } => {
                 let _expr_type = self.infer_expression_type(expr);
                 // TODO: Implement proper match type inference
                 // For now, return a default type
                 Type::String
             }
-            Expression::UnionConstructor { variant, value, union_type } => {
+            Expression::UnionConstructor {
+                variant,
+                value,
+                union_type,
+            } => {
                 if let Some(union_type) = union_type {
                     union_type.clone()
                 } else {

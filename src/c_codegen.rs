@@ -1549,8 +1549,8 @@ impl CCodeGen {
                     Type::Custom(_) => "void*",
                     Type::Generic { .. } => "void*", // TODO: Implement generic type handling
                     Type::TypeParameter(_) => "void*", // TODO: Implement type parameter handling
-                    Type::Union(_) => "void*", // TODO: Implement union types as tagged unions
-                    Type::Result(_, _) => "void*", // TODO: Implement Result types
+                    Type::Union(_) => "void*",       // TODO: Implement union types as tagged unions
+                    Type::Result(_, _) => "void*",   // TODO: Implement Result types
                 };
                 func_code.push_str(&format!("{} {}", param_type_str, param.name));
             }

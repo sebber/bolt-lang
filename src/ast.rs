@@ -184,9 +184,9 @@ pub enum Expression {
     },
     // Union type constructors (Success, Failure)
     UnionConstructor {
-        variant: String,          // "Success", "Failure", etc.
+        variant: String,                // "Success", "Failure", etc.
         value: Option<Box<Expression>>, // Some(expr) or None for unit variants
-        union_type: Option<Type>, // Type hint for inference
+        union_type: Option<Type>,       // Type hint for inference
     },
 }
 

@@ -1,5 +1,5 @@
 use crate::ast::{
-    BinaryOperator, Expression, Field, MatchCase, NativeFunction, Parameter, Pattern, Program, 
+    BinaryOperator, Expression, Field, MatchCase, NativeFunction, Parameter, Pattern, Program,
     Statement, StructField, Type, UnaryOperator,
 };
 use crate::lexer::{Token, TokenType};
@@ -282,22 +282,22 @@ impl Parser {
 
     fn parse_type(&mut self) -> Type {
         let mut base_type = self.parse_base_type();
-        
+
         // Check for union types (A | B | C)
         while self.peek().token_type == TokenType::Pipe {
             self.advance(); // consume '|'
             let right_type = self.parse_base_type();
-            
+
             // If base_type is already a union, add to it
             base_type = match base_type {
                 Type::Union(mut types) => {
                     types.push(right_type);
                     Type::Union(types)
                 }
-                _ => Type::Union(vec![base_type, right_type])
+                _ => Type::Union(vec![base_type, right_type]),
             };
         }
-        
+
         base_type
     }
 
@@ -320,21 +320,21 @@ impl Parser {
                         // Handle Result<T, E> type
                         if self.peek().token_type == TokenType::Less {
                             self.advance(); // consume '<'
-                            
+
                             let success_type = self.parse_type();
-                            
+
                             if self.peek().token_type != TokenType::Comma {
                                 panic!("Expected ',' in Result type");
                             }
                             self.advance(); // consume ','
-                            
+
                             let error_type = self.parse_type();
-                            
+
                             if self.peek().token_type != TokenType::Greater {
                                 panic!("Expected '>' after Result type parameters");
                             }
                             self.advance(); // consume '>'
-                            
+
                             Type::Result(Box::new(success_type), Box::new(error_type))
                         } else {
                             Type::Custom(name.clone())
@@ -346,8 +346,7 @@ impl Parser {
                             self.advance(); // consume '<'
 
                             let mut type_params = Vec::new();
-                            while self.peek().token_type != TokenType::Greater
-                                && !self.is_at_end()
+                            while self.peek().token_type != TokenType::Greater && !self.is_at_end()
                             {
                                 let param_type = self.parse_type();
                                 type_params.push(param_type);
@@ -571,20 +570,22 @@ impl Parser {
                 self.advance();
 
                 // Check for union constructors like Success(value) or Failure(error)
-                if (val == "Success" || val == "Failure") && self.peek().token_type == TokenType::LeftParen {
+                if (val == "Success" || val == "Failure")
+                    && self.peek().token_type == TokenType::LeftParen
+                {
                     self.advance(); // consume '('
-                    
+
                     let value = if self.peek().token_type == TokenType::RightParen {
                         None // Unit constructor
                     } else {
                         Some(Box::new(self.parse_expression()))
                     };
-                    
+
                     if self.peek().token_type != TokenType::RightParen {
                         panic!("Expected ')' after union constructor value");
                     }
                     self.advance(); // consume ')'
-                    
+
                     Expression::UnionConstructor {
                         variant: val,
                         value,
@@ -1514,30 +1515,30 @@ impl Parser {
 
     fn parse_match_statement(&mut self) -> Statement {
         self.advance(); // consume 'match'
-        
+
         let expr = self.parse_expression();
-        
+
         if self.peek().token_type != TokenType::LeftBrace {
             panic!("Expected '{{' after match expression");
         }
         self.advance(); // consume '{'
-        
+
         let mut cases = Vec::new();
-        
+
         while self.peek().token_type != TokenType::RightBrace && !self.is_at_end() {
             // Skip newlines
             if self.peek().token_type == TokenType::Newline {
                 self.advance();
                 continue;
             }
-            
+
             let pattern = self.parse_pattern();
-            
+
             if self.peek().token_type != TokenType::Arrow {
                 panic!("Expected '=>' after pattern");
             }
             self.advance(); // consume '=>'
-            
+
             // Parse the body - could be a single expression or block
             let mut body = Vec::new();
             if self.peek().token_type == TokenType::LeftBrace {
@@ -1557,20 +1558,20 @@ impl Parser {
                 // Single expression as statement
                 body.push(Statement::Expression(self.parse_expression()));
             }
-            
+
             cases.push(MatchCase { pattern, body });
-            
+
             // Optional comma between cases
             if self.peek().token_type == TokenType::Comma {
                 self.advance();
             }
         }
-        
+
         if self.peek().token_type != TokenType::RightBrace {
             panic!("Expected '}}' after match cases");
         }
         self.advance(); // consume '}'
-        
+
         Statement::Expression(Expression::Match {
             expr: Box::new(expr),
             cases,
@@ -1586,22 +1587,24 @@ impl Parser {
             TokenType::Identifier(name) => {
                 let name = name.clone();
                 self.advance();
-                
+
                 // Check if this is a union variant pattern like Success(x) or Failure(msg)
-                if (name == "Success" || name == "Failure") && self.peek().token_type == TokenType::LeftParen {
+                if (name == "Success" || name == "Failure")
+                    && self.peek().token_type == TokenType::LeftParen
+                {
                     self.advance(); // consume '('
-                    
+
                     let inner = if self.peek().token_type == TokenType::RightParen {
                         None // Unit variant
                     } else {
                         Some(Box::new(self.parse_pattern()))
                     };
-                    
+
                     if self.peek().token_type != TokenType::RightParen {
                         panic!("Expected ')' after union variant pattern");
                     }
                     self.advance(); // consume ')'
-                    
+
                     Pattern::UnionVariant {
                         variant: name,
                         inner,

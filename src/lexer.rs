@@ -45,12 +45,12 @@ pub enum TokenType {
     OrOr,
     Bang,
     Dot,
-    Caret,     // ^ for pointer types and dereference
-    Ampersand, // & for address-of
-    Question,  // ? for error propagation operator
-    Pipe,      // | for union types
-    Match,     // match keyword
-    Arrow,     // => for match cases
+    Caret,      // ^ for pointer types and dereference
+    Ampersand,  // & for address-of
+    Question,   // ? for error propagation operator
+    Pipe,       // | for union types
+    Match,      // match keyword
+    Arrow,      // => for match cases
     Underscore, // _ wildcard pattern
     Newline,
     Eof,
