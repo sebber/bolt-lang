@@ -26,6 +26,7 @@ nvim-config.lua
 
 # Node.js (for VS Code extension development)
 bolt-vscode-extension/node_modules/
+bolt-vscode-extension-new/node_modules/
 bolt-vscode-extension/.vscode/
 bolt-vscode-extension/*.vsix
 
