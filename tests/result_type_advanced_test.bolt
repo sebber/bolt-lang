@@ -1,0 +1,36 @@
+import { print } from "bolt:stdio"
+
+// Multiple Result type functions
+fun parseInteger(input: String): Result<Integer, String> {
+    // Simplified parsing - just return success for demo
+    return Success(42)
+}
+
+fun validateRange(value: Integer): Result<Integer, String> {
+    if (value < 0) {
+        return Failure("Value must be non-negative") 
+    } else if (value > 100) {
+        return Failure("Value must be less than 100")
+    } else {
+        return Success(value)
+    }
+}
+
+// Test different Result types
+val parseResult: Result<Integer, String> = parseInteger("42")
+print("Parse completed")
+
+val validationResult: Result<Integer, String> = validateRange(50)
+print("Validation completed")
+
+val rangeError: Result<Integer, String> = validateRange(150)  
+print("Range error case completed")
+
+// Test with different error types
+type CustomError = {
+    code: Integer,
+    message: String
+}
+
+val customResult: Result<Integer, CustomError> = Success(99)
+print("Custom error type completed")

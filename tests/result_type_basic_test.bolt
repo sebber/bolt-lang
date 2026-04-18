@@ -1,0 +1,22 @@
+import { print } from "bolt:stdio"
+
+fun safeDivide(a: Integer, b: Integer): Result<Integer, String> {
+    if (b == 0) {
+        return Failure("Cannot divide by zero")
+    } else {
+        return Success(a / b)
+    }
+}
+
+// Test successful operation
+val success: Result<Integer, String> = safeDivide(10, 2)
+print("Success case completed")
+
+// Test failure operation  
+val failure: Result<Integer, String> = safeDivide(10, 0)
+print("Failure case completed")
+
+// Test direct constructor usage
+val directSuccess: Result<Integer, String> = Success(42)
+val directFailure: Result<Integer, String> = Failure("Direct error")
+print("Direct constructors completed")

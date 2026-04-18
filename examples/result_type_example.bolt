@@ -1,0 +1,58 @@
+import { print } from "bolt:stdio"
+
+// A function that might fail - division by zero protection
+fun safeDivide(a: Integer, b: Integer): Result<Integer, String> {
+    if (b == 0) {
+        return Failure("Cannot divide by zero")
+    } else {
+        return Success(a / b)
+    }
+}
+
+// A function that validates input ranges
+fun validateAge(age: Integer): Result<Integer, String> {
+    if (age < 0) {
+        return Failure("Age cannot be negative")
+    } else if (age > 150) {
+        return Failure("Age seems unrealistic")
+    } else {
+        return Success(age)
+    }
+}
+
+// Custom error type for more structured error handling
+type UserError = {
+    code: Integer,
+    message: String
+}
+
+fun validateUsername(name: String): Result<String, String> {
+    // For this example, we'll just check if it's not empty
+    // In real code, you'd check length, characters, etc.
+    if (name == "") {
+        return Failure("Username cannot be empty")
+    } else {
+        return Success(name)
+    }
+}
+
+// Demo the Result type functionality
+val successDiv: Result<Integer, String> = safeDivide(10, 2)
+print("Safe division 10/2 completed")
+
+val failureDiv: Result<Integer, String> = safeDivide(10, 0)
+print("Safe division 10/0 completed")
+
+val validAge: Result<Integer, String> = validateAge(25)
+print("Age validation for 25 completed")
+
+val invalidAge: Result<Integer, String> = validateAge(0 - 5)
+print("Age validation for -5 completed")
+
+val goodUsername: Result<String, String> = validateUsername("alice")
+print("Username validation for 'alice' completed")
+
+val badUsername: Result<String, String> = validateUsername("")
+print("Username validation for empty string completed")
+
+print("Result type example completed successfully!")
