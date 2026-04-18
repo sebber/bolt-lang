@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Prefer rustup-managed toolchain when available to avoid cargo/rustc mismatch.
+if [ -x "$HOME/.cargo/bin/rustc" ] && [ -x "$HOME/.cargo/bin/cargo" ]; then
+    export PATH="$HOME/.cargo/bin:$PATH"
+fi
+
 # Build the compiler
 echo "Building Bolt compiler..."
 cargo build --quiet
